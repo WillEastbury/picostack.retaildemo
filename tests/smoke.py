@@ -31,6 +31,11 @@ def main() -> None:
         assert call(routes, "POST", "/api/retail/products:ingestDemo", {})["ingested"] is True
         products = call(routes, "GET", "/api/retail/products")
         assert products["totalSize"] >= 1
+        sample = call(routes, "GET", "/api/demo/catalog")
+        assert sample["customers"]
+        assert sample["promotions"]
+        assert sample["shippingMethods"]
+        assert sample["paymentMethods"]
         search = call(routes, "POST", "/api/retail/search", {"query": "waterproof jacket"})
         assert search["results"]
         detail = call(routes, "GET", "/api/retail/products/aurora-shell")
@@ -39,6 +44,27 @@ def main() -> None:
         assert "results" in recs
         event = call(routes, "POST", "/api/retail/events", {"visitorId": "demo", "eventType": "detail-page-view", "productId": "aurora-shell"})
         assert event["accepted"] is True
+        cart = call(routes, "POST", "/api/retail/cart", {"cartId": "demo-cart", "productId": "aurora-shell", "quantity": 2})
+        assert cart["subtotal"] > 0
+        assert cart["lines"][0]["quantity"] == 2
+        cart = call(routes, "PUT", "/api/retail/cart/demo-cart", {"productId": "aurora-shell", "quantity": 1})
+        assert cart["lines"][0]["quantity"] == 1
+        checkout = call(
+            routes,
+            "POST",
+            "/api/retail/checkout",
+            {
+                "cartId": "demo-cart",
+                "customerId": "cust-demo-hiker",
+                "shippingMethodId": "standard",
+                "paymentMethodId": "demo-card",
+                "promoCode": "SUMMIT10",
+            },
+        )
+        assert checkout["order"]["status"] == "CONFIRMED"
+        assert checkout["order"]["summary"]["total"] > 0
+        order = call(routes, "GET", f"/api/retail/orders/{checkout['order']['id']}")
+        assert order["order"]["id"] == checkout["order"]["id"]
     print("picostack retail demo smoke ok")
 
 

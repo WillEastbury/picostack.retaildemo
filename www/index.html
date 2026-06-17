@@ -7,48 +7,97 @@
   <script src="/baremetal/BareMetal.Communications.js"></script>
   <script src="/baremetal/BareMetal.Search.js"></script>
   <style>
-    body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: #111; color: #f5f5f5; }
-    main { max-width: 1180px; margin: 0 auto; padding: 24px; }
-    .hero, .card { background: #1d1d1d; border: 1px solid #333; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    :root { --bg:#111; --panel:#1d1d1d; --soft:#171717; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; --accent-soft:#3a2028; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }
+    main { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .hero, .card, .cart, .checkout { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
     .hero { padding: 30px; }
     h1 { margin: 0 0 8px; font-size: clamp(40px, 7vw, 76px); letter-spacing: -.07em; line-height: .95; }
-    p { color: #b8b8b8; line-height: 1.5; }
-    .bar { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-    input { flex: 1 1 320px; border: 1px solid #444; border-radius: 10px; padding: 13px; background: #151515; color: #fff; }
-    button { border: 0; border-radius: 10px; padding: 13px 16px; background: #fd8ea1; color: #171717; font-weight: 800; cursor: pointer; }
+    h2, h3 { letter-spacing: -.03em; }
+    p { color: var(--muted); line-height: 1.5; }
+    .bar, .row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+    input, select { flex: 1 1 220px; border: 1px solid #444; border-radius: 10px; padding: 13px; background: var(--soft); color: #fff; }
+    button { border: 0; border-radius: 10px; padding: 13px 16px; background: var(--accent); color: #171717; font-weight: 800; cursor: pointer; }
+    button.secondary { background: #2a2a2a; color: var(--text); border: 1px solid #444; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
-    .card { padding: 16px; }
-    .tag { display: inline-block; background: #3a2028; color: #fd8ea1; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
-    .muted { color: #aaa; }
+    .card, .cart, .checkout { padding: 16px; }
+    .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
+    .muted { color: var(--muted); }
     .price { font-size: 24px; font-weight: 900; }
-    .status { margin-top: 14px; color: #aaa; font-size: 14px; }
+    .status { margin-top: 14px; color: var(--muted); font-size: 14px; }
+    .cart-line { border-top: 1px solid var(--line); padding: 12px 0; }
+    .summary { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+    .summary div { display:flex; justify-content:space-between; margin: 6px 0; }
+    .hidden { display: none; }
+    .order { background: #142116; border: 1px solid #315c38; padding: 14px; border-radius: 12px; }
+    @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 <main>
   <section class="hero">
-    <h1>PicoStack Retail Search</h1>
+    <span class="tag">PicoStack demo</span>
+    <h1>Retail search, cart and checkout.</h1>
     <p>Demo API using PicoWeb for HTTP routing, PicoWAL for product/index/journal storage, PicoWAL retail primitives for catalog/search/recommendations, and BareMetalJsTools in the browser.</p>
     <div class="bar">
       <input id="query" value="waterproof jacket" aria-label="Search query">
       <button id="search">Search</button>
-      <button id="seed">Seed demo data</button>
+      <button id="seed" class="secondary">Seed demo data</button>
+      <button id="loadSample" class="secondary">Load sample API set</button>
     </div>
     <div class="status" id="status">Ready</div>
   </section>
-  <section id="grid" class="grid"></section>
+
+  <section class="layout">
+    <div>
+      <div id="samples" class="status"></div>
+      <section id="grid" class="grid"></section>
+    </div>
+    <aside>
+      <section class="cart">
+        <h2>Cart</h2>
+        <div id="cartLines" class="muted">No items yet.</div>
+        <div class="summary" id="cartSummary"></div>
+        <button id="goCheckout">Checkout</button>
+      </section>
+      <section id="checkoutPanel" class="checkout hidden">
+        <h2>Checkout</h2>
+        <label class="muted">Customer</label>
+        <select id="customer"></select>
+        <label class="muted">Shipping</label>
+        <select id="shipping"></select>
+        <label class="muted">Payment</label>
+        <select id="payment"></select>
+        <label class="muted">Promo code</label>
+        <input id="promo" value="SUMMIT10">
+        <button id="placeOrder">Place demo order</button>
+        <div id="orderResult"></div>
+      </section>
+    </aside>
+  </section>
 </main>
 <script>
   BareMetal.Communications.setRoot('/api/retail/');
+  const state = { cartId: 'demo-cart', customers: [], shipping: [], payments: [], promotions: [] };
   const statusEl = document.getElementById('status');
   const grid = document.getElementById('grid');
   const query = document.getElementById('query');
+  const cartLines = document.getElementById('cartLines');
+  const cartSummary = document.getElementById('cartSummary');
 
   function esc(value) {
     return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
   }
 
-  function render(results) {
+  function money(value) { return '£' + Number(value || 0).toFixed(2); }
+
+  async function api(method, path, body) {
+    return BareMetal.Communications.call(method, path, body);
+  }
+
+  function renderProducts(results) {
     const items = (results || []).map(hit => hit.product || hit);
     grid.innerHTML = items.map(product => `
       <article class="card">
@@ -56,21 +105,51 @@
         <h3>${esc(product.title)}</h3>
         <p>${esc(product.description)}</p>
         <p class="muted">${esc(product.brand)} · ${esc(product.tags)}</p>
-        <div class="price">£${Number(product.price || 0).toFixed(2)}</div>
+        <div class="price">${money(product.price)}</div>
         <p class="muted">Inventory: ${Number(product.inventory || 0)}</p>
-        <button data-id="${esc(product.id)}">Similar</button>
+        <div class="row">
+          <button data-add="${esc(product.id)}">Add to cart</button>
+          <button class="secondary" data-similar="${esc(product.id)}">Similar</button>
+        </div>
       </article>
     `).join('');
   }
 
-  async function api(method, path, body) {
-    return BareMetal.Communications.call(method, path, body);
+  function renderCart(cart) {
+    const lines = cart.lines || [];
+    cartLines.innerHTML = lines.length ? lines.map(line => `
+      <div class="cart-line">
+        <strong>${esc(line.product.title)}</strong>
+        <div class="muted">${line.quantity} × ${money(line.product.price)}</div>
+        <div>${money(line.lineTotal)}</div>
+        <div class="row"><button class="secondary" data-remove="${esc(line.product.id)}">Remove</button></div>
+      </div>
+    `).join('') : 'No items yet.';
+    cartSummary.innerHTML = `<div><span>Subtotal</span><strong>${money(cart.subtotal)}</strong></div>`;
+  }
+
+  async function refreshCart() {
+    const cart = await api('GET', '/api/retail/cart/' + state.cartId);
+    renderCart(cart);
+    return cart;
+  }
+
+  async function loadSampleSet() {
+    const data = await api('GET', '/api/demo/catalog');
+    state.customers = data.customers || [];
+    state.shipping = data.shippingMethods || [];
+    state.payments = data.paymentMethods || [];
+    state.promotions = data.promotions || [];
+    customer.innerHTML = state.customers.map(c => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.loyaltyTier)}</option>`).join('');
+    shipping.innerHTML = state.shipping.map(s => `<option value="${esc(s.id)}">${esc(s.name)} · ${money(s.price)} · ${esc(s.eta)}</option>`).join('');
+    payment.innerHTML = state.payments.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
+    samples.textContent = `Sample API set: ${state.customers.length} customers, ${state.promotions.length} promos, ${state.shipping.length} shipping methods, ${state.payments.length} payment methods.`;
   }
 
   async function doSearch() {
     statusEl.textContent = 'Searching...';
     const response = await api('POST', '/api/retail/search', { query: query.value });
-    render(response.results || []);
+    renderProducts(response.results || []);
     statusEl.textContent = `${response.totalSize || 0} results · facets ${JSON.stringify(response.facets || {})}`;
   }
 
@@ -79,20 +158,58 @@
     await api('POST', '/api/retail/products:ingestDemo', {});
     await doSearch();
   };
+  document.getElementById('loadSample').onclick = loadSampleSet;
   document.getElementById('search').onclick = doSearch;
-  grid.onclick = async event => {
-    const id = event.target && event.target.dataset && event.target.dataset.id;
-    if (!id) return;
-    await api('POST', '/api/retail/events', { visitorId: 'demo', eventType: 'detail-page-view', productId: id });
-    const response = await api('POST', '/api/retail/recommend', { id });
-    render(response.results || []);
-    statusEl.textContent = `Recommendations for ${id}`;
+  document.getElementById('goCheckout').onclick = async () => {
+    checkoutPanel.classList.remove('hidden');
+    await loadSampleSet();
+    await refreshCart();
+  };
+  document.getElementById('placeOrder').onclick = async () => {
+    const result = await api('POST', '/api/retail/checkout', {
+      cartId: state.cartId,
+      customerId: customer.value,
+      shippingMethodId: shipping.value,
+      paymentMethodId: payment.value,
+      promoCode: promo.value
+    });
+    const order = result.order;
+    orderResult.innerHTML = `<div class="order"><strong>Order ${esc(order.id)} confirmed</strong><div>Total ${money(order.summary.total)}</div><div class="muted">${esc(order.customer.name)} · ${esc(order.shippingMethod.name)}</div></div>`;
+    await refreshCart();
   };
 
-  doSearch().catch(async () => {
-    await api('POST', '/api/retail/products:ingestDemo', {});
-    await doSearch();
-  });
+  grid.onclick = async event => {
+    const add = event.target && event.target.dataset && event.target.dataset.add;
+    const similar = event.target && event.target.dataset && event.target.dataset.similar;
+    if (add) {
+      await api('POST', '/api/retail/cart', { cartId: state.cartId, productId: add, quantity: 1 });
+      await api('POST', '/api/retail/events', { visitorId: 'demo', eventType: 'add-to-cart', productId: add });
+      await refreshCart();
+    }
+    if (similar) {
+      await api('POST', '/api/retail/events', { visitorId: 'demo', eventType: 'detail-page-view', productId: similar });
+      const response = await api('POST', '/api/retail/recommend', { id: similar });
+      renderProducts(response.results || []);
+      statusEl.textContent = `Recommendations for ${similar}`;
+    }
+  };
+
+  cartLines.onclick = async event => {
+    const remove = event.target && event.target.dataset && event.target.dataset.remove;
+    if (!remove) return;
+    await api('PUT', '/api/retail/cart/' + state.cartId, { productId: remove, quantity: 0 });
+    await refreshCart();
+  };
+
+  (async () => {
+    try {
+      await api('POST', '/api/retail/products:ingestDemo', {});
+      await Promise.all([loadSampleSet(), refreshCart()]);
+      await doSearch();
+    } catch (error) {
+      statusEl.textContent = error.message || String(error);
+    }
+  })();
 </script>
 </body>
 </html>

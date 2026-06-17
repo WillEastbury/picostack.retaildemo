@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 import ctypes
 import json
-import mimetypes
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +17,50 @@ if str(PICOWEB_SRC) not in sys.path:
 
 from picoweb_core import Request, Response, Route  # noqa: E402
 from picoweb_server import run_server  # noqa: E402
+
+
+DEMO_CUSTOMERS = [
+    {
+        "id": "cust-demo-hiker",
+        "name": "Avery Hill",
+        "email": "avery.hill@example.test",
+        "loyaltyTier": "Summit",
+        "defaultAddress": {
+            "line1": "14 Ridge Lane",
+            "city": "Keswick",
+            "postcode": "CA12 5AA",
+            "country": "GB",
+        },
+    },
+    {
+        "id": "cust-demo-skier",
+        "name": "Morgan Vale",
+        "email": "morgan.vale@example.test",
+        "loyaltyTier": "Basecamp",
+        "defaultAddress": {
+            "line1": "22 Alpine Close",
+            "city": "Aviemore",
+            "postcode": "PH22 1QB",
+            "country": "GB",
+        },
+    },
+]
+
+DEMO_PROMOTIONS = [
+    {"code": "SUMMIT10", "description": "10% off demo order", "type": "percent", "value": 10.0},
+    {"code": "FREESHIP", "description": "Free standard delivery", "type": "shipping", "value": 0.0},
+]
+
+DEMO_SHIPPING = [
+    {"id": "standard", "name": "Standard delivery", "price": 3.95, "eta": "3-5 working days"},
+    {"id": "express", "name": "Express delivery", "price": 8.95, "eta": "1-2 working days"},
+    {"id": "pickup", "name": "Store pickup", "price": 0.0, "eta": "Ready tomorrow"},
+]
+
+DEMO_PAYMENT_METHODS = [
+    {"id": "demo-card", "label": "Demo Visa ending 4242", "type": "card"},
+    {"id": "demo-wallet", "label": "Demo wallet", "type": "wallet"},
+]
 
 
 class RetailBridge:
@@ -91,6 +135,8 @@ def bytes_response(response: Response, body: bytes, content_type: str) -> Respon
 
 def make_routes(bridge: RetailBridge) -> list[Route]:
     storefront = (ROOT / "www" / "index.html").read_text(encoding="utf-8")
+    carts: dict[str, dict[str, Any]] = {}
+    orders: dict[str, dict[str, Any]] = {}
 
     def home(_request: Request, response: Response) -> Response:
         return html_response(response, storefront)
@@ -111,6 +157,29 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
 
     def products(_request: Request, response: Response) -> Response:
         return response.with_json(bridge.products())
+
+    def sample_catalog(_request: Request, response: Response) -> Response:
+        return response.with_json(
+            {
+                "catalog": bridge.products(),
+                "customers": DEMO_CUSTOMERS,
+                "promotions": DEMO_PROMOTIONS,
+                "shippingMethods": DEMO_SHIPPING,
+                "paymentMethods": DEMO_PAYMENT_METHODS,
+            }
+        )
+
+    def sample_customers(_request: Request, response: Response) -> Response:
+        return response.with_json({"customers": DEMO_CUSTOMERS})
+
+    def sample_promotions(_request: Request, response: Response) -> Response:
+        return response.with_json({"promotions": DEMO_PROMOTIONS})
+
+    def sample_shipping(_request: Request, response: Response) -> Response:
+        return response.with_json({"shippingMethods": DEMO_SHIPPING})
+
+    def sample_payments(_request: Request, response: Response) -> Response:
+        return response.with_json({"paymentMethods": DEMO_PAYMENT_METHODS})
 
     def product(request: Request, response: Response) -> Response:
         payload = bridge.product(request.params["id"])
@@ -136,16 +205,137 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
             )
         )
 
+    def get_product_map() -> dict[str, dict[str, Any]]:
+        products_payload = bridge.products()
+        return {str(item["id"]): item for item in products_payload.get("products", [])}
+
+    def build_cart(cart_id: str) -> dict[str, Any]:
+        cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})
+        product_map = get_product_map()
+        lines = []
+        subtotal = 0.0
+        for item in cart["items"]:
+            product = product_map.get(item["productId"])
+            if not product:
+                continue
+            quantity = max(1, int(item.get("quantity", 1)))
+            price = float(product.get("price", 0.0))
+            total = round(price * quantity, 2)
+            subtotal += total
+            lines.append({"product": product, "quantity": quantity, "lineTotal": total})
+        cart["lines"] = lines
+        cart["subtotal"] = round(subtotal, 2)
+        return cart
+
+    def cart_get(request: Request, response: Response) -> Response:
+        return response.with_json(build_cart(request.params["id"]))
+
+    def cart_add(request: Request, response: Response) -> Response:
+        payload = json_body(request)
+        cart_id = str(payload.get("cartId") or "demo-cart")
+        product_id = str(payload.get("productId") or "")
+        quantity = max(1, int(payload.get("quantity") or 1))
+        product_map = get_product_map()
+        if product_id not in product_map:
+            response.status = 404
+            return response.with_json({"error": "product not found"})
+        cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})
+        for item in cart["items"]:
+            if item["productId"] == product_id:
+                item["quantity"] = max(1, int(item.get("quantity", 1))) + quantity
+                break
+        else:
+            cart["items"].append({"productId": product_id, "quantity": quantity})
+        return response.with_json(build_cart(cart_id))
+
+    def cart_update(request: Request, response: Response) -> Response:
+        payload = json_body(request)
+        cart_id = request.params["id"]
+        product_id = str(payload.get("productId") or "")
+        quantity = max(0, int(payload.get("quantity") or 0))
+        cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})
+        updated = []
+        for item in cart["items"]:
+            if item["productId"] == product_id:
+                if quantity:
+                    item["quantity"] = quantity
+                    updated.append(item)
+                continue
+            updated.append(item)
+        cart["items"] = updated
+        return response.with_json(build_cart(cart_id))
+
+    def checkout(request: Request, response: Response) -> Response:
+        payload = json_body(request)
+        cart_id = str(payload.get("cartId") or "demo-cart")
+        customer_id = str(payload.get("customerId") or DEMO_CUSTOMERS[0]["id"])
+        shipping_id = str(payload.get("shippingMethodId") or "standard")
+        payment_id = str(payload.get("paymentMethodId") or "demo-card")
+        promo_code = str(payload.get("promoCode") or "").upper()
+
+        customer = next((item for item in DEMO_CUSTOMERS if item["id"] == customer_id), DEMO_CUSTOMERS[0])
+        shipping = next((item for item in DEMO_SHIPPING if item["id"] == shipping_id), DEMO_SHIPPING[0])
+        payment = next((item for item in DEMO_PAYMENT_METHODS if item["id"] == payment_id), DEMO_PAYMENT_METHODS[0])
+        promotion = next((item for item in DEMO_PROMOTIONS if item["code"] == promo_code), None)
+        cart = build_cart(cart_id)
+        subtotal = float(cart["subtotal"])
+        discount = 0.0
+        shipping_price = float(shipping["price"])
+        if promotion and promotion["type"] == "percent":
+            discount = round(subtotal * float(promotion["value"]) / 100.0, 2)
+        if promotion and promotion["type"] == "shipping":
+            shipping_price = 0.0
+        tax = round(max(0.0, subtotal - discount) * 0.2, 2)
+        total = round(max(0.0, subtotal - discount) + shipping_price + tax, 2)
+        order_id = "ord-" + uuid.uuid4().hex[:10]
+        order = {
+            "id": order_id,
+            "status": "CONFIRMED",
+            "cart": cart,
+            "customer": customer,
+            "shippingMethod": shipping,
+            "paymentMethod": payment,
+            "promotion": promotion,
+            "summary": {
+                "subtotal": subtotal,
+                "discount": discount,
+                "shipping": round(shipping_price, 2),
+                "tax": tax,
+                "total": total,
+            },
+        }
+        orders[order_id] = order
+        carts[cart_id] = {"id": cart_id, "items": []}
+        return response.with_json({"order": order})
+
+    def order_get(request: Request, response: Response) -> Response:
+        order = orders.get(request.params["id"])
+        if not order:
+            response.status = 404
+            return response.with_json({"error": "order not found"})
+        return response.with_json({"order": order})
+
     return [
         Route("GET", "/", home),
         Route("GET", "/retail", home),
+        Route("GET", "/checkout", home),
         Route("GET", "/baremetal/{name}", baremetal),
+        Route("GET", "/api/demo/catalog", sample_catalog),
+        Route("GET", "/api/demo/customers", sample_customers),
+        Route("GET", "/api/demo/promotions", sample_promotions),
+        Route("GET", "/api/demo/shipping", sample_shipping),
+        Route("GET", "/api/demo/paymentMethods", sample_payments),
         Route("POST", "/api/retail/products:ingestDemo", ingest),
         Route("GET", "/api/retail/products", products),
         Route("GET", "/api/retail/products/{id}", product),
         Route("POST", "/api/retail/search", search),
         Route("POST", "/api/retail/recommend", recommend),
         Route("POST", "/api/retail/events", event),
+        Route("GET", "/api/retail/cart/{id}", cart_get),
+        Route("POST", "/api/retail/cart", cart_add),
+        Route("PUT", "/api/retail/cart/{id}", cart_update),
+        Route("POST", "/api/retail/checkout", checkout),
+        Route("GET", "/api/retail/orders/{id}", order_get),
     ]
 
 

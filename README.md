@@ -28,12 +28,23 @@ http://127.0.0.1:8787/
 | Method | Route | Purpose |
 | --- | --- | --- |
 | `GET` | `/` | storefront |
+| `GET` | `/checkout` | storefront with checkout panel |
+| `GET` | `/api/demo/catalog` | complete sample-data API set |
+| `GET` | `/api/demo/customers` | sample customers |
+| `GET` | `/api/demo/promotions` | sample promotions |
+| `GET` | `/api/demo/shipping` | sample shipping methods |
+| `GET` | `/api/demo/paymentMethods` | sample payment methods |
 | `POST` | `/api/retail/products:ingestDemo` | seed demo catalog |
 | `GET` | `/api/retail/products` | list products |
 | `GET` | `/api/retail/products/{id}` | product detail |
 | `POST` | `/api/retail/search` | search products |
 | `POST` | `/api/retail/recommend` | similar items |
 | `POST` | `/api/retail/events` | record user event |
+| `GET` | `/api/retail/cart/{id}` | get cart |
+| `POST` | `/api/retail/cart` | add item to cart |
+| `PUT` | `/api/retail/cart/{id}` | update/remove cart item |
+| `POST` | `/api/retail/checkout` | place demo order |
+| `GET` | `/api/retail/orders/{id}` | get demo order |
 
 Example:
 
@@ -41,6 +52,18 @@ Example:
 curl -X POST http://127.0.0.1:8787/api/retail/search \
   -H 'Content-Type: application/json' \
   -d '{"query":"waterproof jacket"}'
+```
+
+Checkout example:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/retail/cart \
+  -H 'Content-Type: application/json' \
+  -d '{"cartId":"demo-cart","productId":"aurora-shell","quantity":1}'
+
+curl -X POST http://127.0.0.1:8787/api/retail/checkout \
+  -H 'Content-Type: application/json' \
+  -d '{"cartId":"demo-cart","customerId":"cust-demo-hiker","shippingMethodId":"standard","paymentMethodId":"demo-card","promoCode":"SUMMIT10"}'
 ```
 
 ## Validate
