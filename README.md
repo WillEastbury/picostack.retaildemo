@@ -8,6 +8,7 @@ End-to-end retail search demo built from Pico stack components:
 - **PicoWeb**: route dispatch and HTTP server.
 - **BareMetalJsTools**: browser-side API calls and search helper module.
 - **SimpleCMS-style JSON**: site metadata, pages, menu items, store metadata and sample storage endpoints.
+- **PicoScript**: checkout policy and CMS template rendering run through PicoScript's C frontend and PicoVM.
 
 ## Run
 
@@ -65,6 +66,12 @@ CMS example:
 curl http://127.0.0.1:8787/api/cms/config
 curl http://127.0.0.1:8787/api/storage/Product/sample
 ```
+
+PicoScript-backed behavior:
+
+- `scripts/checkout_policy.pc` calculates discount, tax and total in integer pence.
+- `src/picoscript_runner.py` compiles that policy through PicoScript and runs it on PicoVM during checkout.
+- CMS page responses render a small template via PicoScript `Template.Compile` / `Template.Render`.
 
 Checkout example:
 

@@ -1,0 +1,41 @@
+// Checkout policy reference.
+// The Python host renders constants into this program and executes it through
+// PicoScript's C frontend + PicoVM. All money values are integer pence.
+int subtotal = {{subtotal_pence}};
+int shipping = {{shipping_pence}};
+int discount_percent = {{discount_percent}};
+int discount = subtotal * discount_percent / 100;
+int taxable = subtotal - discount;
+int tax = taxable / 5;
+int total = taxable + shipping + tax;
+int b0 = discount / 16777216;
+int r0 = discount - b0 * 16777216;
+int b1 = r0 / 65536;
+int r1 = r0 - b1 * 65536;
+int b2 = r1 / 256;
+int b3 = r1 - b2 * 256;
+Io.WriteByte(b0);
+Io.WriteByte(b1);
+Io.WriteByte(b2);
+Io.WriteByte(b3);
+int c0 = tax / 16777216;
+int s0 = tax - c0 * 16777216;
+int c1 = s0 / 65536;
+int s1 = s0 - c1 * 65536;
+int c2 = s1 / 256;
+int c3 = s1 - c2 * 256;
+Io.WriteByte(c0);
+Io.WriteByte(c1);
+Io.WriteByte(c2);
+Io.WriteByte(c3);
+int d0 = total / 16777216;
+int t0 = total - d0 * 16777216;
+int d1 = t0 / 65536;
+int t1 = t0 - d1 * 65536;
+int d2 = t1 / 256;
+int d3 = t1 - d2 * 256;
+Io.WriteByte(d0);
+Io.WriteByte(d1);
+Io.WriteByte(d2);
+Io.WriteByte(d3);
+RETURN;

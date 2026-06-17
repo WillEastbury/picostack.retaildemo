@@ -1,0 +1,4 @@
+// CMS render reference.
+// The host materializes template/model bytes and PicoScript renders via
+// Template.Compile + Template.Render so page copy can be checked through PicoVM.
+// See src/picoscript_runner.py for generated Memory.Set/Span.Make wrapper.

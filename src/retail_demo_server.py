@@ -18,6 +18,7 @@ if str(PICOWEB_SRC) not in sys.path:
 
 from picoweb_core import Request, Response, Route  # noqa: E402
 from picoweb_server import run_server  # noqa: E402
+from src.picoscript_runner import checkout_totals_pence, render_template  # noqa: E402
 
 
 DEMO_CUSTOMERS = [
@@ -177,7 +178,16 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         if page is None:
             response.status = 404
             return response.with_json({"error": "page not found"})
-        return response.with_json({"page": page, "Site": cms.get("Metadata", {}), "Store": cms.get("Store", {})})
+        site = cms.get("Metadata", {})
+        rendered = render_template(
+            "{{SiteName}} :: {{PageTitle}} :: {{MarkdownContent}}",
+            {
+                "SiteName": str(site.get("SiteName", "")),
+                "PageTitle": str(page.get("PageTitle", "")),
+                "MarkdownContent": str(page.get("MarkdownContent", "")),
+            },
+        )
+        return response.with_json({"page": page, "Site": site, "Store": cms.get("Store", {}), "Rendered": rendered})
 
     def sample_catalog(_request: Request, response: Response) -> Response:
         return response.with_json(
@@ -316,14 +326,20 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         promotion = next((item for item in DEMO_PROMOTIONS if item["code"] == promo_code), None)
         cart = build_cart(cart_id)
         subtotal = float(cart["subtotal"])
-        discount = 0.0
         shipping_price = float(shipping["price"])
+        discount_percent = 0
         if promotion and promotion["type"] == "percent":
-            discount = round(subtotal * float(promotion["value"]) / 100.0, 2)
+            discount_percent = int(float(promotion["value"]))
         if promotion and promotion["type"] == "shipping":
             shipping_price = 0.0
-        tax = round(max(0.0, subtotal - discount) * 0.2, 2)
-        total = round(max(0.0, subtotal - discount) + shipping_price + tax, 2)
+        totals = checkout_totals_pence(
+            int(round(subtotal * 100)),
+            int(round(shipping_price * 100)),
+            discount_percent,
+        )
+        discount = round(totals["discount"] / 100.0, 2)
+        tax = round(totals["tax"] / 100.0, 2)
+        total = round(totals["total"] / 100.0, 2)
         order_id = "ord-" + uuid.uuid4().hex[:10]
         order = {
             "id": order_id,
@@ -339,6 +355,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
                 "shipping": round(shipping_price, 2),
                 "tax": tax,
                 "total": total,
+                "policy": "picoscript:checkout_policy.pc",
             },
         }
         orders[order_id] = order

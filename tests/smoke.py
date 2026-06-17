@@ -36,6 +36,7 @@ def main() -> None:
         assert any(page["RelativeUrl"] == "checkout" for page in pages["pages"])
         page = call(routes, "GET", "/api/cms/pages/home")
         assert page["page"]["Hero"]["Title"]
+        assert page["Rendered"].startswith("Pico Outfitters ::")
         store_sample = call(routes, "GET", "/api/storage/Store/sample")
         assert store_sample["Title"] == "Pico Outfitters"
         products = call(routes, "GET", "/api/retail/products")
@@ -73,6 +74,7 @@ def main() -> None:
         )
         assert checkout["order"]["status"] == "CONFIRMED"
         assert checkout["order"]["summary"]["total"] > 0
+        assert checkout["order"]["summary"]["policy"] == "picoscript:checkout_policy.pc"
         order = call(routes, "GET", f"/api/retail/orders/{checkout['order']['id']}")
         assert order["order"]["id"] == checkout["order"]["id"]
     print("picostack retail demo smoke ok")
