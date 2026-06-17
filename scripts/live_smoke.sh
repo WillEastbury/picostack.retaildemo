@@ -11,8 +11,10 @@ PYTHONPATH=../picoweb/src:. python3 src/retail_demo_server.py \
 pid=$!
 trap 'kill "$pid" 2>/dev/null || true' EXIT
 
-for _ in $(seq 1 30); do
+ready=0
+for _ in $(seq 1 60); do
   if curl -fsS http://127.0.0.1:8789/ >/tmp/picostack_home.html 2>/tmp/picostack_curl.err; then
+    ready=1
     break
   fi
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -21,6 +23,11 @@ for _ in $(seq 1 30); do
   fi
   sleep 0.2
 done
+if [ "$ready" != "1" ]; then
+  cat /tmp/picostack_demo.out
+  cat /tmp/picostack_curl.err
+  exit 1
+fi
 
 curl -fsS -X POST http://127.0.0.1:8789/api/retail/search \
   -H 'Content-Type: application/json' \
