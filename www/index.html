@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PicoStack Retail Search Demo</title>
+  <script src="/baremetal/BareMetal.Communications.js"></script>
+  <script src="/baremetal/BareMetal.Search.js"></script>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: #111; color: #f5f5f5; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .hero, .card { background: #1d1d1d; border: 1px solid #333; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .hero { padding: 30px; }
+    h1 { margin: 0 0 8px; font-size: clamp(40px, 7vw, 76px); letter-spacing: -.07em; line-height: .95; }
+    p { color: #b8b8b8; line-height: 1.5; }
+    .bar { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+    input { flex: 1 1 320px; border: 1px solid #444; border-radius: 10px; padding: 13px; background: #151515; color: #fff; }
+    button { border: 0; border-radius: 10px; padding: 13px 16px; background: #fd8ea1; color: #171717; font-weight: 800; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
+    .card { padding: 16px; }
+    .tag { display: inline-block; background: #3a2028; color: #fd8ea1; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
+    .muted { color: #aaa; }
+    .price { font-size: 24px; font-weight: 900; }
+    .status { margin-top: 14px; color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>PicoStack Retail Search</h1>
+    <p>Demo API using PicoWeb for HTTP routing, PicoWAL for product/index/journal storage, PicoWAL retail primitives for catalog/search/recommendations, and BareMetalJsTools in the browser.</p>
+    <div class="bar">
+      <input id="query" value="waterproof jacket" aria-label="Search query">
+      <button id="search">Search</button>
+      <button id="seed">Seed demo data</button>
+    </div>
+    <div class="status" id="status">Ready</div>
+  </section>
+  <section id="grid" class="grid"></section>
+</main>
+<script>
+  BareMetal.Communications.setRoot('/api/retail/');
+  const statusEl = document.getElementById('status');
+  const grid = document.getElementById('grid');
+  const query = document.getElementById('query');
+
+  function esc(value) {
+    return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
+  }
+
+  function render(results) {
+    const items = (results || []).map(hit => hit.product || hit);
+    grid.innerHTML = items.map(product => `
+      <article class="card">
+        <span class="tag">${esc(product.category)}</span>
+        <h3>${esc(product.title)}</h3>
+        <p>${esc(product.description)}</p>
+        <p class="muted">${esc(product.brand)} · ${esc(product.tags)}</p>
+        <div class="price">£${Number(product.price || 0).toFixed(2)}</div>
+        <p class="muted">Inventory: ${Number(product.inventory || 0)}</p>
+        <button data-id="${esc(product.id)}">Similar</button>
+      </article>
+    `).join('');
+  }
+
+  async function api(method, path, body) {
+    return BareMetal.Communications.call(method, path, body);
+  }
+
+  async function doSearch() {
+    statusEl.textContent = 'Searching...';
+    const response = await api('POST', '/api/retail/search', { query: query.value });
+    render(response.results || []);
+    statusEl.textContent = `${response.totalSize || 0} results · facets ${JSON.stringify(response.facets || {})}`;
+  }
+
+  document.getElementById('seed').onclick = async () => {
+    statusEl.textContent = 'Seeding demo data...';
+    await api('POST', '/api/retail/products:ingestDemo', {});
+    await doSearch();
+  };
+  document.getElementById('search').onclick = doSearch;
+  grid.onclick = async event => {
+    const id = event.target && event.target.dataset && event.target.dataset.id;
+    if (!id) return;
+    await api('POST', '/api/retail/events', { visitorId: 'demo', eventType: 'detail-page-view', productId: id });
+    const response = await api('POST', '/api/retail/recommend', { id });
+    render(response.results || []);
+    statusEl.textContent = `Recommendations for ${id}`;
+  };
+
+  doSearch().catch(async () => {
+    await api('POST', '/api/retail/products:ingestDemo', {});
+    await doSearch();
+  });
+</script>
+</body>
+</html>
