@@ -29,6 +29,21 @@ def checkout_policy_template() -> str:
     return (ROOT / "scripts" / "checkout_policy.pc").read_text(encoding="utf-8")
 
 
+@lru_cache(maxsize=1)
+def route_policy_template() -> str:
+    return (ROOT / "scripts" / "route_policy.pc").read_text(encoding="utf-8")
+
+
+def route_action(action: int) -> int:
+    source = route_policy_template().replace("{{action}}", str(action))
+    words = lower_to_bytecode_safe(compile_c(source))
+    vm = PicoVM().run(words)
+    raw = b"".join(vm.output)
+    if len(raw) != 1:
+        raise RuntimeError(f"route policy emitted {len(raw)} bytes, expected 1")
+    return raw[0]
+
+
 def checkout_totals_pence(subtotal_pence: int, shipping_pence: int, discount_percent: int) -> dict[str, int]:
     source = (
         checkout_policy_template()

@@ -1,0 +1,16 @@
+// Route policy reference.
+// The host injects the action code selected by PicoWeb route matching; PicoScript
+// validates it as an allowed serving action and emits the action byte.
+int action = {{action}};
+int allowed = 0;
+if (action >= 1) {
+    if (action <= 20) {
+        allowed = 1;
+    }
+}
+if (allowed == 1) {
+    Io.WriteByte(action);
+} else {
+    Io.WriteByte(0);
+}
+RETURN;

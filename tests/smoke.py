@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from src.retail_demo_server import RetailBridge, make_routes
+from src.picoscript_runner import route_action
 from picoweb_core import Response, parse_request, dispatch
 
 
@@ -25,6 +26,9 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         bridge = RetailBridge(ROOT / "build" / "libpicostack_retail_demo.so", Path(tmp))
         routes = make_routes(bridge)
+        assert route_action(1) == 1
+        assert route_action(20) == 20
+        assert route_action(21) == 0
         home = call(routes, "GET", "/")
         assert "siteName" in home
         assert "loadCMS" in home
