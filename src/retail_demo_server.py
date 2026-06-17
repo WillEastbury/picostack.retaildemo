@@ -12,6 +12,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 PICOWEB_SRC = ROOT.parent / "picoweb" / "src"
 BAREMETAL_SRC = ROOT.parent / "BareMetalJsTools" / "src"
+CMS_PATH = ROOT / "content" / "site.json"
 if str(PICOWEB_SRC) not in sys.path:
     sys.path.insert(0, str(PICOWEB_SRC))
 
@@ -61,6 +62,10 @@ DEMO_PAYMENT_METHODS = [
     {"id": "demo-card", "label": "Demo Visa ending 4242", "type": "card"},
     {"id": "demo-wallet", "label": "Demo wallet", "type": "wallet"},
 ]
+
+
+def load_cms() -> dict[str, Any]:
+    return json.loads(CMS_PATH.read_text(encoding="utf-8"))
 
 
 class RetailBridge:
@@ -135,6 +140,7 @@ def bytes_response(response: Response, body: bytes, content_type: str) -> Respon
 
 def make_routes(bridge: RetailBridge) -> list[Route]:
     storefront = (ROOT / "www" / "index.html").read_text(encoding="utf-8")
+    cms = load_cms()
     carts: dict[str, dict[str, Any]] = {}
     orders: dict[str, dict[str, Any]] = {}
 
@@ -158,9 +164,27 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
     def products(_request: Request, response: Response) -> Response:
         return response.with_json(bridge.products())
 
+    def cms_config(_request: Request, response: Response) -> Response:
+        return response.with_json(cms)
+
+    def cms_pages(_request: Request, response: Response) -> Response:
+        pages = [page for page in cms.get("Pages", []) if not page.get("IsHidden")]
+        return response.with_json({"pages": pages})
+
+    def cms_page(request: Request, response: Response) -> Response:
+        slug = request.params["slug"]
+        page = next((item for item in cms.get("Pages", []) if item.get("RelativeUrl") == slug), None)
+        if page is None:
+            response.status = 404
+            return response.with_json({"error": "page not found"})
+        return response.with_json({"page": page, "Site": cms.get("Metadata", {}), "Store": cms.get("Store", {})})
+
     def sample_catalog(_request: Request, response: Response) -> Response:
         return response.with_json(
             {
+                "site": cms.get("Metadata", {}),
+                "pages": cms.get("Pages", []),
+                "store": cms.get("Store", {}),
                 "catalog": bridge.products(),
                 "customers": DEMO_CUSTOMERS,
                 "promotions": DEMO_PROMOTIONS,
@@ -180,6 +204,19 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
 
     def sample_payments(_request: Request, response: Response) -> Response:
         return response.with_json({"paymentMethods": DEMO_PAYMENT_METHODS})
+
+    def storage_sample(request: Request, response: Response) -> Response:
+        object_type = request.params["objectType"]
+        if object_type == "Product":
+            return response.with_json(bridge.products())
+        if object_type == "Store":
+            return response.with_json(cms.get("Store", {}))
+        if object_type == "Page":
+            return response.with_json({"pages": cms.get("Pages", [])})
+        if object_type == "Basket":
+            return response.with_json(build_cart("demo-cart"))
+        response.status = 404
+        return response.with_json({"error": "sample type not found"})
 
     def product(request: Request, response: Response) -> Response:
         payload = bridge.product(request.params["id"])
@@ -319,12 +356,17 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         Route("GET", "/", home),
         Route("GET", "/retail", home),
         Route("GET", "/checkout", home),
+        Route("GET", "/sample-data", home),
         Route("GET", "/baremetal/{name}", baremetal),
+        Route("GET", "/api/cms/config", cms_config),
+        Route("GET", "/api/cms/pages", cms_pages),
+        Route("GET", "/api/cms/pages/{slug}", cms_page),
         Route("GET", "/api/demo/catalog", sample_catalog),
         Route("GET", "/api/demo/customers", sample_customers),
         Route("GET", "/api/demo/promotions", sample_promotions),
         Route("GET", "/api/demo/shipping", sample_shipping),
         Route("GET", "/api/demo/paymentMethods", sample_payments),
+        Route("GET", "/api/storage/{objectType}/sample", storage_sample),
         Route("POST", "/api/retail/products:ingestDemo", ingest),
         Route("GET", "/api/retail/products", products),
         Route("GET", "/api/retail/products/{id}", product),

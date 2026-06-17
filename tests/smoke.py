@@ -26,12 +26,22 @@ def main() -> None:
         bridge = RetailBridge(ROOT / "build" / "libpicostack_retail_demo.so", Path(tmp))
         routes = make_routes(bridge)
         home = call(routes, "GET", "/")
-        assert "PicoStack Retail Search" in home
+        assert "siteName" in home
+        assert "loadCMS" in home
         assert "BareMetal.Communications" in home
         assert call(routes, "POST", "/api/retail/products:ingestDemo", {})["ingested"] is True
+        cms = call(routes, "GET", "/api/cms/config")
+        assert cms["Metadata"]["SiteName"] == "Pico Outfitters"
+        pages = call(routes, "GET", "/api/cms/pages")
+        assert any(page["RelativeUrl"] == "checkout" for page in pages["pages"])
+        page = call(routes, "GET", "/api/cms/pages/home")
+        assert page["page"]["Hero"]["Title"]
+        store_sample = call(routes, "GET", "/api/storage/Store/sample")
+        assert store_sample["Title"] == "Pico Outfitters"
         products = call(routes, "GET", "/api/retail/products")
         assert products["totalSize"] >= 1
         sample = call(routes, "GET", "/api/demo/catalog")
+        assert sample["site"]["SiteName"] == "Pico Outfitters"
         assert sample["customers"]
         assert sample["promotions"]
         assert sample["shippingMethods"]

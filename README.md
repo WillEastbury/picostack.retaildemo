@@ -7,6 +7,7 @@ End-to-end retail search demo built from Pico stack components:
 - **PicoWAL Retail Primitives**: retail catalog/search/recommend/event behavior.
 - **PicoWeb**: route dispatch and HTTP server.
 - **BareMetalJsTools**: browser-side API calls and search helper module.
+- **SimpleCMS-style JSON**: site metadata, pages, menu items, store metadata and sample storage endpoints.
 
 ## Run
 
@@ -29,11 +30,15 @@ http://127.0.0.1:8787/
 | --- | --- | --- |
 | `GET` | `/` | storefront |
 | `GET` | `/checkout` | storefront with checkout panel |
+| `GET` | `/api/cms/config` | SimpleCMS-style site config JSON |
+| `GET` | `/api/cms/pages` | visible CMS pages/menu data |
+| `GET` | `/api/cms/pages/{slug}` | one CMS page |
 | `GET` | `/api/demo/catalog` | complete sample-data API set |
 | `GET` | `/api/demo/customers` | sample customers |
 | `GET` | `/api/demo/promotions` | sample promotions |
 | `GET` | `/api/demo/shipping` | sample shipping methods |
 | `GET` | `/api/demo/paymentMethods` | sample payment methods |
+| `GET` | `/api/storage/{objectType}/sample` | SimpleCMS-style storage sample endpoint |
 | `POST` | `/api/retail/products:ingestDemo` | seed demo catalog |
 | `GET` | `/api/retail/products` | list products |
 | `GET` | `/api/retail/products/{id}` | product detail |
@@ -52,6 +57,13 @@ Example:
 curl -X POST http://127.0.0.1:8787/api/retail/search \
   -H 'Content-Type: application/json' \
   -d '{"query":"waterproof jacket"}'
+```
+
+CMS example:
+
+```bash
+curl http://127.0.0.1:8787/api/cms/config
+curl http://127.0.0.1:8787/api/storage/Product/sample
 ```
 
 Checkout example:

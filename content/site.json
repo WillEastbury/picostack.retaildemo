@@ -1,0 +1,76 @@
+{
+  "Metadata": {
+    "SiteName": "Pico Outfitters",
+    "SiteTitle": "Pico Outfitters | Retail search powered by PicoStack",
+    "SiteDescription": "A JSON-CMS driven retail demo using PicoWAL, PicoWeb, PicoWAL Retail Primitives and BareMetalJsTools.",
+    "HomePage": "home",
+    "RootPath": "/",
+    "BannerImage": "",
+    "BackgroundImage": ""
+  },
+  "ShopEnabled": true,
+  "Store": {
+    "Currency": "GBP",
+    "Enabled": true,
+    "Title": "Pico Outfitters",
+    "Searchable": true,
+    "CategoryList": ["outerwear", "food", "sportswear", "drinks", "hardware", "camping", "footwear", "packs"]
+  },
+  "Pages": [
+    {
+      "IsCacheable": true,
+      "IsHidden": false,
+      "CacheDuration": 60,
+      "MenuShortText": "Shop",
+      "PageTitle": "Shop the Pico stack",
+      "RelativeUrl": "home",
+      "MenuPosition": "Left",
+      "MarkdownContent": "Search across outdoor kit, food, sportswear, drinks and hardware. Add products to a demo cart and complete a sample checkout.",
+      "InlineHTMLContent": "Search, cart and checkout are backed by PicoWAL cards and PicoWAL Search indexes.",
+      "DataEndpoint": "/api/retail/search",
+      "DataRender": "ProductGrid",
+      "Hero": {
+        "Eyebrow": "JSON CMS + retail search",
+        "Title": "A tiny CMS-driven store on the Pico stack.",
+        "Subtitle": "The copy, menu, departments and checkout hints are served from a SimpleCMS-shaped JSON document. Products and indexes live in PicoWAL.",
+        "SearchPlaceholder": "Try coffee drinks, hardware drill, sportswear, granola..."
+      },
+      "Sections": [
+        {
+          "Title": "Fast product discovery",
+          "Text": "Full-text, vector candidates, facets and range indexes are composed from PicoWAL primitives."
+        },
+        {
+          "Title": "Demo checkout",
+          "Text": "Cart, customer, shipping, payment and promotion APIs are included for a complete store walkthrough."
+        }
+      ]
+    },
+    {
+      "IsCacheable": true,
+      "IsHidden": false,
+      "CacheDuration": 60,
+      "MenuShortText": "Checkout",
+      "PageTitle": "Checkout",
+      "RelativeUrl": "checkout",
+      "MenuPosition": "Right",
+      "MarkdownContent": "Review the cart, choose a customer, select shipping and place a demo order.",
+      "InlineHTMLContent": "No payment details are collected; payment methods are sample data.",
+      "DataEndpoint": "/api/retail/checkout",
+      "DataRender": "Checkout"
+    },
+    {
+      "IsCacheable": true,
+      "IsHidden": false,
+      "CacheDuration": 60,
+      "MenuShortText": "Sample Data",
+      "PageTitle": "Sample Data API",
+      "RelativeUrl": "sample-data",
+      "MenuPosition": "Right",
+      "MarkdownContent": "The demo exposes JSON sample APIs for catalog, customers, promotions, shipping and payment methods.",
+      "InlineHTMLContent": "Use these endpoints to show the CMS and commerce API surfaces separately.",
+      "DataEndpoint": "/api/demo/catalog",
+      "DataRender": "SampleData"
+    }
+  ]
+}

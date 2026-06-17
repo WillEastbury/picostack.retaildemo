@@ -11,7 +11,11 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }
     main { max-width: 1240px; margin: 0 auto; padding: 24px; }
-    .hero, .card, .cart, .checkout { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .topnav { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+    .brand { font-weight:900; letter-spacing:-.04em; font-size:24px; }
+    .menu { display:flex; gap:8px; flex-wrap:wrap; }
+    .menu a { color: var(--text); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:var(--panel); }
+    .hero, .card, .cart, .checkout, .cms-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
     .hero { padding: 30px; }
     h1 { margin: 0 0 8px; font-size: clamp(40px, 7vw, 76px); letter-spacing: -.07em; line-height: .95; }
     h2, h3 { letter-spacing: -.03em; }
@@ -22,7 +26,8 @@
     button.secondary { background: #2a2a2a; color: var(--text); border: 1px solid #444; }
     .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
-    .card, .cart, .checkout { padding: 16px; }
+    .sections { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:18px; }
+    .card, .cart, .checkout, .cms-panel { padding: 16px; }
     .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
     .muted { color: var(--muted); }
     .price { font-size: 24px; font-weight: 900; }
@@ -37,10 +42,14 @@
 </head>
 <body>
 <main>
+  <nav class="topnav">
+    <div class="brand" id="siteName">Pico Outfitters</div>
+    <div class="menu" id="menu"></div>
+  </nav>
   <section class="hero">
-    <span class="tag">PicoStack demo</span>
-    <h1>Retail search, cart and checkout.</h1>
-    <p>Demo API using PicoWeb for HTTP routing, PicoWAL for product/index/journal storage, PicoWAL retail primitives for catalog/search/recommendations, and BareMetalJsTools in the browser.</p>
+    <span class="tag" id="eyebrow">PicoStack demo</span>
+    <h1 id="heroTitle">Retail search, cart and checkout.</h1>
+    <p id="heroSubtitle">Demo API using PicoWeb for HTTP routing, PicoWAL for product/index/journal storage, PicoWAL retail primitives for catalog/search/recommendations, and BareMetalJsTools in the browser.</p>
     <div class="bar">
       <input id="query" value="waterproof jacket" aria-label="Search query">
       <button id="search">Search</button>
@@ -49,6 +58,7 @@
     </div>
     <div class="status" id="status">Ready</div>
   </section>
+  <section class="sections" id="sections"></section>
 
   <section class="layout">
     <div>
@@ -80,7 +90,7 @@
 </main>
 <script>
   BareMetal.Communications.setRoot('/api/retail/');
-  const state = { cartId: 'demo-cart', customers: [], shipping: [], payments: [], promotions: [] };
+  const state = { cartId: 'demo-cart', customers: [], shipping: [], payments: [], promotions: [], cms: null };
   const statusEl = document.getElementById('status');
   const grid = document.getElementById('grid');
   const query = document.getElementById('query');
@@ -95,6 +105,32 @@
 
   async function api(method, path, body) {
     return BareMetal.Communications.call(method, path, body);
+  }
+
+  async function loadCMS() {
+    const cms = await api('GET', '/api/cms/config');
+    state.cms = cms;
+    const site = cms.Metadata || {};
+    const pages = (cms.Pages || []).filter(p => !p.IsHidden);
+    const home = pages.find(p => p.RelativeUrl === (site.HomePage || 'home')) || pages[0] || {};
+    const hero = home.Hero || {};
+    document.title = site.SiteTitle || 'PicoStack Retail Search Demo';
+    siteName.textContent = site.SiteName || 'Pico Outfitters';
+    menu.innerHTML = pages
+      .filter(p => p.MenuShortText)
+      .map(p => `<a href="/${esc(p.RelativeUrl === 'home' ? '' : p.RelativeUrl)}">${esc(p.MenuShortText)}</a>`)
+      .join('');
+    eyebrow.textContent = hero.Eyebrow || 'PicoStack demo';
+    heroTitle.textContent = hero.Title || home.PageTitle || 'Retail search, cart and checkout.';
+    heroSubtitle.textContent = hero.Subtitle || home.MarkdownContent || '';
+    query.placeholder = hero.SearchPlaceholder || 'Search products';
+    sections.innerHTML = (home.Sections || []).map(section => `
+      <article class="cms-panel">
+        <span class="tag">CMS section</span>
+        <h3>${esc(section.Title)}</h3>
+        <p>${esc(section.Text)}</p>
+      </article>
+    `).join('');
   }
 
   function renderProducts(results) {
@@ -143,7 +179,8 @@
     customer.innerHTML = state.customers.map(c => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.loyaltyTier)}</option>`).join('');
     shipping.innerHTML = state.shipping.map(s => `<option value="${esc(s.id)}">${esc(s.name)} · ${money(s.price)} · ${esc(s.eta)}</option>`).join('');
     payment.innerHTML = state.payments.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
-    samples.textContent = `Sample API set: ${state.customers.length} customers, ${state.promotions.length} promos, ${state.shipping.length} shipping methods, ${state.payments.length} payment methods.`;
+    const page = (data.pages || []).find(p => p.RelativeUrl === 'sample-data') || {};
+    samples.textContent = `${page.PageTitle || 'Sample API set'}: ${state.customers.length} customers, ${state.promotions.length} promos, ${state.shipping.length} shipping methods, ${state.payments.length} payment methods.`;
   }
 
   async function doSearch() {
@@ -204,7 +241,7 @@
   (async () => {
     try {
       await api('POST', '/api/retail/products:ingestDemo', {});
-      await Promise.all([loadSampleSet(), refreshCart()]);
+      await Promise.all([loadCMS(), loadSampleSet(), refreshCart()]);
       await doSearch();
     } catch (error) {
       statusEl.textContent = error.message || String(error);
