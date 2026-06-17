@@ -34,14 +34,24 @@ def route_policy_template() -> str:
     return (ROOT / "scripts" / "route_policy.pc").read_text(encoding="utf-8")
 
 
-def route_action(action: int) -> int:
-    source = route_policy_template().replace("{{action}}", str(action))
+@lru_cache(maxsize=1)
+def cms_render_template() -> str:
+    return (ROOT / "scripts" / "cms_render.pc").read_text(encoding="utf-8")
+
+
+def route_action(action: int, method: int = 0, path: int = 0) -> tuple[int, int]:
+    source = (
+        route_policy_template()
+        .replace("{{action}}", str(action))
+        .replace("{{method}}", str(method))
+        .replace("{{path}}", str(path))
+    )
     words = lower_to_bytecode_safe(compile_c(source))
     vm = PicoVM().run(words)
     raw = b"".join(vm.output)
-    if len(raw) != 1:
-        raise RuntimeError(f"route policy emitted {len(raw)} bytes, expected 1")
-    return raw[0]
+    if len(raw) != 2:
+        raise RuntimeError(f"route policy emitted {len(raw)} bytes, expected 2")
+    return raw[0], raw[1]
 
 
 def checkout_totals_pence(subtotal_pence: int, shipping_pence: int, discount_percent: int) -> dict[str, int]:
@@ -71,13 +81,13 @@ def render_template(template: str, model: dict[str, str]) -> str:
     model_text = "\n".join(f"{key}={value}" for key, value in model.items())
     model_bytes = model_text.encode("utf-8")
     source = (
-        _setbytes(1000, template_bytes)
-        + _setbytes(4000, model_bytes)
-        + f"int tmpl = Span.Make(1000, {len(template_bytes)});"
-        + f"int model = Span.Make(4000, {len(model_bytes)});"
-        + "int plan = Template.Compile(tmpl);"
-        + "int outp = Template.Render(plan, model);"
-        + "Io.Write(outp);"
+        cms_render_template()
+        .replace("{{template_bytes}}", _setbytes(1000, template_bytes))
+        .replace("{{model_bytes}}", _setbytes(12000, model_bytes))
+        .replace("{{template_base}}", "1000")
+        .replace("{{template_len}}", str(len(template_bytes)))
+        .replace("{{model_base}}", "12000")
+        .replace("{{model_len}}", str(len(model_bytes)))
     )
     words = lower_to_bytecode_safe(compile_c(source))
     vm = PicoVM().run(words)

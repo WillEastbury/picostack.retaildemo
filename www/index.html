@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PicoStack Retail Search Demo</title>
+  <title>{{SiteTitle}}</title>
   <script src="/baremetal/BareMetal.Communications.js"></script>
   <script src="/baremetal/BareMetal.Search.js"></script>
   <style>
@@ -43,13 +43,13 @@
 <body>
 <main>
   <nav class="topnav">
-    <div class="brand" id="siteName">Pico Outfitters</div>
+    <div class="brand" id="siteName">{{SiteName}}</div>
     <div class="menu" id="menu"></div>
   </nav>
   <section class="hero">
-    <span class="tag" id="eyebrow">PicoStack demo</span>
-    <h1 id="heroTitle">Retail search, cart and checkout.</h1>
-    <p id="heroSubtitle">Demo API using PicoWeb for HTTP routing, PicoWAL for product/index/journal storage, PicoWAL retail primitives for catalog/search/recommendations, and BareMetalJsTools in the browser.</p>
+    <span class="tag" id="eyebrow">PicoScript served</span>
+    <h1 id="heroTitle">{{HomePageTitle}}</h1>
+    <p id="heroSubtitle">{{SiteDescription}}</p>
     <div class="bar">
       <input id="query" value="waterproof jacket" aria-label="Search query">
       <button id="search">Search</button>

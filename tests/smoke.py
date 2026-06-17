@@ -26,9 +26,9 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         bridge = RetailBridge(ROOT / "build" / "libpicostack_retail_demo.so", Path(tmp))
         routes = make_routes(bridge)
-        assert route_action(1) == 1
-        assert route_action(20) == 20
-        assert route_action(21) == 0
+        assert route_action(1, 1, 1) == (1, 2)
+        assert route_action(20, 2, 20) == (20, 2)
+        assert route_action(20, 1, 1) == (0, 4)
         home = call(routes, "GET", "/")
         assert "siteName" in home
         assert "loadCMS" in home

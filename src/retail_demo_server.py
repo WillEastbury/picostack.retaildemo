@@ -145,13 +145,13 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
     carts: dict[str, dict[str, Any]] = {}
     orders: dict[str, dict[str, Any]] = {}
 
-    def require_action(action: int) -> None:
-        actual = route_action(action)
-        if actual != action:
+    def require_action(action: int, method: int, path: int) -> None:
+        actual, status_class = route_action(action, method, path)
+        if actual != action or status_class != 2:
             raise RuntimeError(f"PicoScript route policy rejected action {action}")
 
     def home(_request: Request, response: Response) -> Response:
-        require_action(1)
+        require_action(1, 1, 1)
         site = cms.get("Metadata", {})
         page = next((item for item in cms.get("Pages", []) if item.get("RelativeUrl") == "home"), {})
         rendered = render_template(
@@ -166,7 +166,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return html_response(response, rendered)
 
     def baremetal(request: Request, response: Response) -> Response:
-        require_action(2)
+        require_action(2, 1, 2)
         name = request.params["name"]
         allowed = {"BareMetal.Communications.js", "BareMetal.Search.js"}
         if name not in allowed:
@@ -178,24 +178,24 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return bytes_response(response, path.read_bytes(), "application/javascript")
 
     def ingest(_request: Request, response: Response) -> Response:
-        require_action(3)
+        require_action(3, 2, 3)
         return response.with_json(bridge.ingest())
 
     def products(_request: Request, response: Response) -> Response:
-        require_action(4)
+        require_action(4, 1, 4)
         return response.with_json(bridge.products())
 
     def cms_config(_request: Request, response: Response) -> Response:
-        require_action(5)
+        require_action(5, 1, 5)
         return response.with_json(cms)
 
     def cms_pages(_request: Request, response: Response) -> Response:
-        require_action(6)
+        require_action(6, 1, 6)
         pages = [page for page in cms.get("Pages", []) if not page.get("IsHidden")]
         return response.with_json({"pages": pages})
 
     def cms_page(request: Request, response: Response) -> Response:
-        require_action(7)
+        require_action(7, 1, 7)
         slug = request.params["slug"]
         page = next((item for item in cms.get("Pages", []) if item.get("RelativeUrl") == slug), None)
         if page is None:
@@ -213,7 +213,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return response.with_json({"page": page, "Site": site, "Store": cms.get("Store", {}), "Rendered": rendered})
 
     def sample_catalog(_request: Request, response: Response) -> Response:
-        require_action(8)
+        require_action(8, 1, 8)
         return response.with_json(
             {
                 "site": cms.get("Metadata", {}),
@@ -228,23 +228,23 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         )
 
     def sample_customers(_request: Request, response: Response) -> Response:
-        require_action(9)
+        require_action(9, 1, 9)
         return response.with_json({"customers": DEMO_CUSTOMERS})
 
     def sample_promotions(_request: Request, response: Response) -> Response:
-        require_action(10)
+        require_action(10, 1, 10)
         return response.with_json({"promotions": DEMO_PROMOTIONS})
 
     def sample_shipping(_request: Request, response: Response) -> Response:
-        require_action(11)
+        require_action(11, 1, 11)
         return response.with_json({"shippingMethods": DEMO_SHIPPING})
 
     def sample_payments(_request: Request, response: Response) -> Response:
-        require_action(12)
+        require_action(12, 1, 12)
         return response.with_json({"paymentMethods": DEMO_PAYMENT_METHODS})
 
     def storage_sample(request: Request, response: Response) -> Response:
-        require_action(13)
+        require_action(13, 1, 13)
         object_type = request.params["objectType"]
         if object_type == "Product":
             return response.with_json(bridge.products())
@@ -258,24 +258,24 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return response.with_json({"error": "sample type not found"})
 
     def product(request: Request, response: Response) -> Response:
-        require_action(14)
+        require_action(14, 1, 14)
         payload = bridge.product(request.params["id"])
         if "error" in payload:
             response.status = 404
         return response.with_json(payload)
 
     def search(request: Request, response: Response) -> Response:
-        require_action(15)
+        require_action(15, 2, 15)
         payload = json_body(request)
         return response.with_json(bridge.search(str(payload.get("query", ""))))
 
     def recommend(request: Request, response: Response) -> Response:
-        require_action(16)
+        require_action(16, 2, 16)
         payload = json_body(request)
         return response.with_json(bridge.recommend(str(payload.get("id", ""))))
 
     def event(request: Request, response: Response) -> Response:
-        require_action(17)
+        require_action(17, 2, 17)
         payload = json_body(request)
         return response.with_json(
             bridge.event(
@@ -308,11 +308,11 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return cart
 
     def cart_get(request: Request, response: Response) -> Response:
-        require_action(18)
+        require_action(18, 1, 18)
         return response.with_json(build_cart(request.params["id"]))
 
     def cart_add(request: Request, response: Response) -> Response:
-        require_action(19)
+        require_action(19, 2, 19)
         payload = json_body(request)
         cart_id = str(payload.get("cartId") or "demo-cart")
         product_id = str(payload.get("productId") or "")
@@ -331,7 +331,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return response.with_json(build_cart(cart_id))
 
     def cart_update(request: Request, response: Response) -> Response:
-        require_action(20)
+        require_action(20, 3, 20)
         payload = json_body(request)
         cart_id = request.params["id"]
         product_id = str(payload.get("productId") or "")
@@ -349,7 +349,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return response.with_json(build_cart(cart_id))
 
     def checkout(request: Request, response: Response) -> Response:
-        require_action(20)
+        require_action(20, 2, 20)
         payload = json_body(request)
         cart_id = str(payload.get("cartId") or "demo-cart")
         customer_id = str(payload.get("customerId") or DEMO_CUSTOMERS[0]["id"])
@@ -400,7 +400,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return response.with_json({"order": order})
 
     def order_get(request: Request, response: Response) -> Response:
-        require_action(20)
+        require_action(20, 1, 20)
         order = orders.get(request.params["id"])
         if not order:
             response.status = 404

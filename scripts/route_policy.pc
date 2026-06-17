@@ -1,16 +1,55 @@
-// Route policy reference.
-// The host injects the action code selected by PicoWeb route matching; PicoScript
-// validates it as an allowed serving action and emits the action byte.
+// Route policy.
+// Host supplies compact method/path-class hints from PicoWeb matching.
+// PicoScript maps them to an allowed serving action and emits:
+//   byte 0: action
+//   byte 1: HTTP status class (2 = allowed, 4 = rejected)
 int action = {{action}};
-int allowed = 0;
-if (action >= 1) {
-    if (action <= 20) {
-        allowed = 1;
-    }
+int method = {{method}};
+int path = {{path}};
+int mapped = 0;
+if (method == 1) {
+    if (path == 1) { mapped = 1; }
+    if (path == 2) { mapped = 2; }
+    if (path == 4) { mapped = 4; }
+    if (path == 5) { mapped = 5; }
+    if (path == 6) { mapped = 6; }
+    if (path == 7) { mapped = 7; }
+    if (path == 8) { mapped = 8; }
+    if (path == 9) { mapped = 9; }
+    if (path == 10) { mapped = 10; }
+    if (path == 11) { mapped = 11; }
+    if (path == 12) { mapped = 12; }
+    if (path == 13) { mapped = 13; }
+    if (path == 14) { mapped = 14; }
+    if (path == 18) { mapped = 18; }
+    if (path == 20) { mapped = 20; }
 }
-if (allowed == 1) {
-    Io.WriteByte(action);
+if (method == 2) {
+    if (path == 3) { mapped = 3; }
+    if (path == 15) { mapped = 15; }
+    if (path == 16) { mapped = 16; }
+    if (path == 17) { mapped = 17; }
+    if (path == 19) { mapped = 19; }
+    if (path == 20) { mapped = 20; }
+}
+if (method == 3) {
+    if (path == 20) { mapped = 20; }
+}
+if (mapped == action) {
+    if (action >= 1) {
+        if (action <= 20) {
+            Io.WriteByte(action);
+            Io.WriteByte(2);
+        } else {
+            Io.WriteByte(0);
+            Io.WriteByte(4);
+        }
+    } else {
+        Io.WriteByte(0);
+        Io.WriteByte(4);
+    }
 } else {
     Io.WriteByte(0);
+    Io.WriteByte(4);
 }
 RETURN;
