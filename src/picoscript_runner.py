@@ -80,13 +80,15 @@ def render_template(template: str, model: dict[str, str]) -> str:
     template_bytes = template.encode("utf-8")
     model_text = "\n".join(f"{key}={value}" for key, value in model.items())
     model_bytes = model_text.encode("utf-8")
+    template_base = 1000
+    model_base = template_base + len(template_bytes) + 1024
     source = (
         cms_render_template()
-        .replace("{{template_bytes}}", _setbytes(1000, template_bytes))
-        .replace("{{model_bytes}}", _setbytes(12000, model_bytes))
-        .replace("{{template_base}}", "1000")
+        .replace("{{template_bytes}}", _setbytes(template_base, template_bytes))
+        .replace("{{model_bytes}}", _setbytes(model_base, model_bytes))
+        .replace("{{template_base}}", str(template_base))
         .replace("{{template_len}}", str(len(template_bytes)))
-        .replace("{{model_base}}", "12000")
+        .replace("{{model_base}}", str(model_base))
         .replace("{{model_len}}", str(len(model_bytes)))
     )
     words = lower_to_bytecode_safe(compile_c(source))
