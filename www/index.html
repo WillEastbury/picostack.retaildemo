@@ -137,7 +137,8 @@
   const cartSummary = document.getElementById('cartSummary');
   let lastProductId = '';
   const TARGET_RATE = 24000;
-  let voiceWs, audioContext, sourceNode, processorNode, micStream, nextPlaybackTime = 0;
+  let voiceWs, audioContext, sourceNode, processorNode, silentGainNode, micStream, nextPlaybackTime = 0;
+  let voiceGreetingPending = false;
 
   function esc(value) {
     return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
@@ -208,9 +209,8 @@
     voiceWs = new WebSocket(location.origin.replace(/^http/, 'ws') + config.websocket);
     voiceWs.onopen = () => {
       voiceDot.classList.add('ready');
-      voiceLogLine('Connected. Ask about products, ordering, stock or shipping.');
-      voiceWs.send(JSON.stringify({ type: 'context_update', context: voiceContext.value }));
-      voiceWs.send(JSON.stringify({ type: 'greeting', text: voiceGreeting.value }));
+      voiceGreetingPending = true;
+      voiceLogLine('Connected. Preparing the voice assistant...');
     };
     voiceWs.onclose = event => {
       voiceDot.classList.remove('ready');
@@ -222,24 +222,33 @@
       if (message.type === 'audio') playPcm16(message.audio);
       if (message.type === 'transcript_delta') voiceLogLine('Agent: ' + message.text);
       if (message.type === 'event') voiceLogLine('Event: ' + message.event + (message.voice ? ' · ' + message.voice : ''));
+      if (message.type === 'event' && message.event === 'voice.selected' && voiceGreetingPending) {
+        voiceGreetingPending = false;
+        voiceWs.send(JSON.stringify({ type: 'greeting', text: voiceGreeting.value }));
+        voiceLogLine('Ready. Ask about products, ordering, stock or shipping.');
+      }
       if (message.type === 'tool_call') voiceLogLine('Tool called: ' + message.name);
       if (message.type === 'error') voiceLogLine('Error: ' + JSON.stringify(message.error));
     };
     sourceNode = audioContext.createMediaStreamSource(micStream);
-    processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+    processorNode = audioContext.createScriptProcessor(1024, 1, 1);
     processorNode.onaudioprocess = event => {
       if (!voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
       const pcm = downsampleToPcm16(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
       voiceWs.send(JSON.stringify({ type: 'input_audio', audio: bytesToBase64(pcm) }));
     };
+    silentGainNode = audioContext.createGain();
+    silentGainNode.gain.value = 0;
     sourceNode.connect(processorNode);
-    processorNode.connect(audioContext.destination);
+    processorNode.connect(silentGainNode);
+    silentGainNode.connect(audioContext.destination);
     startVoice.disabled = true;
     stopVoice.disabled = false;
   }
 
   function stopVoiceSession() {
     if (processorNode) processorNode.disconnect();
+    if (silentGainNode) silentGainNode.disconnect();
     if (sourceNode) sourceNode.disconnect();
     if (micStream) micStream.getTracks().forEach(track => track.stop());
     if (voiceWs && voiceWs.readyState <= WebSocket.OPEN) voiceWs.close();

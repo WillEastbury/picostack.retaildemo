@@ -120,17 +120,21 @@ class RetailBrowserVoiceBridge:
             return await websockets.connect(
                 self.settings.voice_live_ws_url,
                 additional_headers=headers,
+                compression=None,
                 max_size=None,
                 ping_interval=20,
                 ping_timeout=20,
+                close_timeout=5,
             )
         except TypeError:
             return await websockets.connect(
                 self.settings.voice_live_ws_url,
                 extra_headers=headers,
+                compression=None,
                 max_size=None,
                 ping_interval=20,
                 ping_timeout=20,
+                close_timeout=5,
             )
 
     async def _send_voice_live(self, payload: dict[str, Any]) -> None:
@@ -192,13 +196,17 @@ class RetailBrowserVoiceBridge:
 
     async def _configure_session(self) -> None:
         products = self.tools.bridge.products()
+        compact_catalog = "; ".join(
+            f"{item.get('id')}:{item.get('title')} ({item.get('category')}, £{item.get('price')}, stock {item.get('inventory')})"
+            for item in (products.get("products") or [])[:24]
+        )
         instructions = (
             "You are a concise British retail voice concierge for the Pico Outfitters demo store.\n"
             "You can help callers find items, order items, check shipping status, and check stock.\n"
             "Use tools whenever the caller asks for product search, stock, orders or shipping.\n"
             "This is a demo: do not claim payment has been taken and do not collect real card details.\n"
             "If the caller asks for a person, explain that the store can request a callback using the Call me panel.\n"
-            f"Current catalog snapshot: {json.dumps(products)[:3500]}"
+            f"Current catalog snapshot: {compact_catalog}"
         )
         if self.demo_context:
             instructions += f"\nPresenter supplied context:\n{self.demo_context}"
@@ -212,7 +220,7 @@ class RetailBrowserVoiceBridge:
                     "input_audio_transcription": {"model": "azure-speech", "language": "en-GB"},
                     "turn_detection": {
                         "type": "azure_semantic_vad",
-                        "silence_duration_ms": 500,
+                        "silence_duration_ms": 300,
                         "interrupt_response": True,
                     },
                     "input_audio_noise_reduction": {"type": "azure_deep_noise_suppression"},

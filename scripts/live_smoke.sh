@@ -13,7 +13,7 @@ pid=$!
 trap 'kill "$pid" 2>/dev/null || true' EXIT
 
 ready=0
-for _ in $(seq 1 60); do
+for _ in $(seq 1 180); do
   if curl -fsS http://127.0.0.1:8789/ >/tmp/picostack_home.html 2>/tmp/picostack_curl.err; then
     ready=1
     break
@@ -22,7 +22,7 @@ for _ in $(seq 1 60); do
     cat /tmp/picostack_demo.out
     exit 1
   fi
-  sleep 0.2
+  sleep 0.5
 done
 if [ "$ready" != "1" ]; then
   cat /tmp/picostack_demo.out
