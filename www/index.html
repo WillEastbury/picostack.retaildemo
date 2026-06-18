@@ -15,7 +15,7 @@
     .brand { font-weight:900; letter-spacing:-.04em; font-size:24px; }
     .menu { display:flex; gap:8px; flex-wrap:wrap; }
     .menu a { color: var(--text); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:var(--panel); }
-    .hero, .card, .cart, .checkout, .cms-panel, .voice-call { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .hero, .card, .cart, .checkout, .cms-panel, .voice-call, .talk-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
     .hero { padding: 30px; }
     h1 { margin: 0 0 8px; font-size: clamp(40px, 7vw, 76px); letter-spacing: -.07em; line-height: .95; }
     h2, h3 { letter-spacing: -.03em; }
@@ -27,7 +27,7 @@
     .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
     .sections { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:18px; }
-    .card, .cart, .checkout, .cms-panel, .voice-call { padding: 16px; }
+    .card, .cart, .checkout, .cms-panel, .voice-call, .talk-panel { padding: 16px; }
     .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
     .muted { color: var(--muted); }
     .price { font-size: 24px; font-weight: 900; }
@@ -35,6 +35,7 @@
     .callback-pill { align-items:center; background:var(--soft); border:1px solid var(--line); border-radius:999px; color:var(--muted); display:inline-flex; font-size:12px; font-weight:800; gap:8px; padding:7px 10px; }
     .dot { background:#fbbf24; border-radius:50%; box-shadow:0 0 0 5px rgba(251,191,36,.12); height:9px; width:9px; }
     .dot.ready { background:#34d399; box-shadow:0 0 0 5px rgba(52,211,153,.12); }
+    .voice-log { background:#0b0b0b; border:1px solid var(--line); border-radius:12px; color:var(--muted); font-family:Consolas,monospace; font-size:12px; max-height:170px; overflow:auto; padding:10px; white-space:pre-wrap; }
     .cart-line { border-top: 1px solid var(--line); padding: 12px 0; }
     .summary { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
     .summary div { display:flex; justify-content:space-between; margin: 6px 0; }
@@ -58,6 +59,7 @@
       <button id="search">Search</button>
       <button id="seed" class="secondary">Seed demo data</button>
       <button id="loadSample" class="secondary">Load sample API set</button>
+      <button id="talkWithMe">Talk with me</button>
       <button id="callMe" class="secondary">Call me</button>
     </div>
     <div class="status" id="status">Ready</div>
@@ -108,6 +110,20 @@
         <button id="requestCall">Request callback</button>
         <div id="callResult" class="status"></div>
       </section>
+      <section id="talkPanel" class="talk-panel hidden">
+        <span class="callback-pill"><span class="dot" id="voiceDot"></span> Voice Live shop assistant</span>
+        <h2>Talk with me</h2>
+        <p class="muted">Ask by voice: “Find me coffee drinks”, “Order two cold brew cans”, “Check stock on the drill”, or “What is the shipping status of order voice-ord...”.</p>
+        <div class="row">
+          <button id="startVoice">Start voice</button>
+          <button id="stopVoice" class="secondary" disabled>Stop</button>
+        </div>
+        <label class="muted">Shop voice greeting</label>
+        <input id="voiceGreeting" value="Hello, I'm the Pico Outfitters voice assistant. I can help find items, place demo orders, check stock, and check shipping status.">
+        <label class="muted">Live context</label>
+        <input id="voiceContext" value="Use the demo catalog and never collect real payment details.">
+        <div id="voiceLog" class="voice-log">Voice panel ready.</div>
+      </section>
     </aside>
   </section>
 </main>
@@ -120,6 +136,8 @@
   const cartLines = document.getElementById('cartLines');
   const cartSummary = document.getElementById('cartSummary');
   let lastProductId = '';
+  const TARGET_RATE = 24000;
+  let voiceWs, audioContext, sourceNode, processorNode, micStream, nextPlaybackTime = 0;
 
   function esc(value) {
     return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
@@ -129,6 +147,106 @@
 
   async function api(method, path, body) {
     return BareMetal.Communications.call(method, path, body);
+  }
+
+  function voiceLogLine(text) {
+    voiceLog.textContent += '\n' + text;
+    voiceLog.scrollTop = voiceLog.scrollHeight;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function downsampleToPcm16(samples, sourceRate) {
+    const ratio = sourceRate / TARGET_RATE;
+    const length = Math.floor(samples.length / ratio);
+    const pcm = new Int16Array(length);
+    for (let i = 0; i < length; i++) {
+      const start = Math.floor(i * ratio);
+      const end = Math.min(Math.floor((i + 1) * ratio), samples.length);
+      let sum = 0;
+      for (let j = start; j < end; j++) sum += samples[j];
+      const sample = Math.max(-1, Math.min(1, sum / Math.max(1, end - start)));
+      pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    }
+    return new Uint8Array(pcm.buffer);
+  }
+
+  function playPcm16(base64Pcm) {
+    const bytes = base64ToBytes(base64Pcm);
+    const pcm = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+    const buffer = audioContext.createBuffer(1, pcm.length, TARGET_RATE);
+    const channel = buffer.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 0x8000;
+    const node = audioContext.createBufferSource();
+    node.buffer = buffer;
+    node.connect(audioContext.destination);
+    nextPlaybackTime = Math.max(nextPlaybackTime, audioContext.currentTime + 0.03);
+    node.start(nextPlaybackTime);
+    nextPlaybackTime += buffer.duration;
+  }
+
+  async function startVoiceSession() {
+    const config = await api('GET', '/api/retail/voice/config');
+    if (!config.enabled) {
+      voiceLogLine('Voice Live is not configured. Set VOICE_LIVE_ENDPOINT and credentials on the server.');
+      return;
+    }
+    audioContext = new AudioContext({ sampleRate: TARGET_RATE });
+    await audioContext.resume();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    voiceWs = new WebSocket(location.origin.replace(/^http/, 'ws') + config.websocket);
+    voiceWs.onopen = () => {
+      voiceDot.classList.add('ready');
+      voiceLogLine('Connected. Ask about products, ordering, stock or shipping.');
+      voiceWs.send(JSON.stringify({ type: 'context_update', context: voiceContext.value }));
+      voiceWs.send(JSON.stringify({ type: 'greeting', text: voiceGreeting.value }));
+    };
+    voiceWs.onclose = event => {
+      voiceDot.classList.remove('ready');
+      voiceLogLine(`Disconnected. code=${event.code || 'n/a'}`);
+    };
+    voiceWs.onerror = () => voiceLogLine('WebSocket error.');
+    voiceWs.onmessage = event => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'audio') playPcm16(message.audio);
+      if (message.type === 'transcript_delta') voiceLogLine('Agent: ' + message.text);
+      if (message.type === 'event') voiceLogLine('Event: ' + message.event + (message.voice ? ' · ' + message.voice : ''));
+      if (message.type === 'tool_call') voiceLogLine('Tool called: ' + message.name);
+      if (message.type === 'error') voiceLogLine('Error: ' + JSON.stringify(message.error));
+    };
+    sourceNode = audioContext.createMediaStreamSource(micStream);
+    processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+    processorNode.onaudioprocess = event => {
+      if (!voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
+      const pcm = downsampleToPcm16(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+      voiceWs.send(JSON.stringify({ type: 'input_audio', audio: bytesToBase64(pcm) }));
+    };
+    sourceNode.connect(processorNode);
+    processorNode.connect(audioContext.destination);
+    startVoice.disabled = true;
+    stopVoice.disabled = false;
+  }
+
+  function stopVoiceSession() {
+    if (processorNode) processorNode.disconnect();
+    if (sourceNode) sourceNode.disconnect();
+    if (micStream) micStream.getTracks().forEach(track => track.stop());
+    if (voiceWs && voiceWs.readyState <= WebSocket.OPEN) voiceWs.close();
+    if (audioContext) audioContext.close();
+    startVoice.disabled = false;
+    stopVoice.disabled = true;
+    voiceDot.classList.remove('ready');
   }
 
   async function loadCMS() {
@@ -231,6 +349,13 @@
     callPanel.classList.remove('hidden');
     callResult.textContent = 'Tell us what you need and we will request a demo callback.';
   };
+  document.getElementById('talkWithMe').onclick = async () => {
+    talkPanel.classList.remove('hidden');
+    const config = await api('GET', '/api/retail/voice/config');
+    voiceLogLine(config.enabled ? 'Voice Live configured. Press Start voice.' : 'Voice Live not configured on this server yet.');
+  };
+  document.getElementById('startVoice').onclick = () => startVoiceSession().catch(err => voiceLogLine('Start failed: ' + err.message));
+  document.getElementById('stopVoice').onclick = stopVoiceSession;
   document.getElementById('requestCall').onclick = async () => {
     callDot.classList.remove('ready');
     const response = await api('POST', '/api/retail/call-me', {

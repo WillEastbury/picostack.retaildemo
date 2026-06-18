@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.retail_demo_server import RetailBridge, make_routes
 from src.picoscript_runner import route_action
+from src.retail_voice_tools import RetailVoiceToolContext
 from picoweb_core import Response, parse_request, dispatch
 
 
@@ -98,6 +99,15 @@ def main() -> None:
         assert callback["callback"]["status"] == "REQUESTED"
         callbacks = call(routes, "GET", "/api/retail/callbacks")
         assert callbacks["callbacks"][0]["phone"] == "+447700900123"
+        voice_tools = RetailVoiceToolContext(bridge)
+        found = voice_tools.call_tool("find_items", {"query": "coffee drinks"})
+        assert "results" in found
+        stock = voice_tools.call_tool("check_stock", {"query": "drill hardware"})
+        assert stock["found"] is True
+        order = voice_tools.call_tool("order_items", {"product_id": "aurora-shell", "quantity": 1, "customer_name": "Avery"})
+        assert order["ordered"] is True
+        shipping = voice_tools.call_tool("check_shipping_status", {"order_id": order["order"]["id"]})
+        assert shipping["found"] is True
     print("picostack retail demo smoke ok")
 
 

@@ -10,14 +10,16 @@ End-to-end retail search demo built from Pico stack components:
 - **SimpleCMS-style JSON**: site metadata, pages, menu items, store metadata and sample storage endpoints.
 - **PicoScript**: checkout policy and CMS template rendering run through PicoScript's C frontend and PicoVM.
 - **PicoScript route policy**: every demo route executes `scripts/route_policy.pc` before serving content or invoking backend actions.
+- **Azure Voice Live compatible shop assistant**: optional browser voice bridge with retail tools for find/order/shipping/stock.
 
 ## Run
 
 From WSL/Linux:
 
 ```bash
+python3 -m pip install --user --break-system-packages -r requirements.txt
 bash scripts/build_demo_lib.sh
-python3 src/retail_demo_server.py --seed --host 127.0.0.1 --port 8787
+python3 src/retail_asgi_server.py --host 127.0.0.1 --port 8787
 ```
 
 Open:
@@ -54,6 +56,8 @@ http://127.0.0.1:8787/
 | `GET` | `/api/retail/orders/{id}` | get demo order |
 | `POST` | `/api/retail/call-me` | request a demo store callback |
 | `GET` | `/api/retail/callbacks` | list demo callback requests |
+| `GET` | `/api/retail/voice/config` | browser voice configuration and retail tool schema |
+| `WS` | `/ws/browser-voice` | browser microphone to Azure Voice Live bridge |
 
 Example:
 
@@ -96,6 +100,23 @@ curl -X POST http://127.0.0.1:8787/api/retail/call-me \
   -H 'Content-Type: application/json' \
   -d '{"name":"Avery Hill","phone":"+447700900123","topic":"stock","reason":"Please check stock on Aurora Storm Shell Jacket"}'
 ```
+
+Voice setup:
+
+```bash
+export VOICE_LIVE_ENDPOINT="https://<your-ai-resource>.services.ai.azure.com"
+export VOICE_LIVE_API_KEY="<optional-api-key>"
+export VOICE_LIVE_MODEL="gpt-realtime-mini"
+bash scripts/build_demo_lib.sh
+python3 src/retail_asgi_server.py --host 127.0.0.1 --port 8787
+```
+
+The storefront **Talk with me** panel can then use Voice Live tools:
+
+- `find_items`
+- `check_stock`
+- `order_items`
+- `check_shipping_status`
 
 ## Validate
 

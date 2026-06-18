@@ -5,9 +5,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 bash scripts/build_demo_lib.sh >/tmp/picostack_build.out
+python3 -m pip install --user --break-system-packages -q -r requirements.txt
 
-PYTHONPATH=../picoweb/src:. python3 src/retail_demo_server.py \
-  --seed --host 127.0.0.1 --port 8789 >/tmp/picostack_demo.out 2>&1 &
+PYTHONPATH=../picoweb/src:. python3 src/retail_asgi_server.py \
+  --host 127.0.0.1 --port 8789 >/tmp/picostack_demo.out 2>&1 &
 pid=$!
 trap 'kill "$pid" 2>/dev/null || true' EXIT
 
@@ -32,9 +33,11 @@ fi
 curl -fsS -X POST http://127.0.0.1:8789/api/retail/search \
   -H 'Content-Type: application/json' \
   -d '{"query":"waterproof jacket"}' >/tmp/picostack_search.json
+curl -fsS http://127.0.0.1:8789/api/retail/voice/config >/tmp/picostack_voice.json
 
 grep -q "PicoStack Retail Search" /tmp/picostack_home.html
 grep -q "results" /tmp/picostack_search.json
+grep -q "find_items" /tmp/picostack_voice.json
 
 kill "$pid"
 wait "$pid" 2>/dev/null || true
