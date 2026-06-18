@@ -7,6 +7,7 @@ import logging
 import os
 import random
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from starlette.websockets import WebSocket
@@ -21,6 +22,18 @@ BRITISH_VOICES = [
     "en-GB-LibbyNeural",
     "en-GB-AbbiNeural",
 ]
+
+
+def load_dotenv(path: Path | str = ".env") -> None:
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 @dataclass(frozen=True)
@@ -42,6 +55,7 @@ class RetailVoiceSettings:
 
 
 def retail_voice_settings_from_env() -> RetailVoiceSettings | None:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     endpoint = os.getenv("VOICE_LIVE_ENDPOINT")
     if not endpoint:
         return None
