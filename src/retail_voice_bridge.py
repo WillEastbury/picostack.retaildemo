@@ -33,7 +33,10 @@ def load_dotenv(path: Path | str = ".env") -> None:
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key, value = stripped.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        clean_value = value.strip().strip('"').strip("'")
+        if "VOICE_LIVE_" in clean_value or "PUBLIC_HOST=" in clean_value or "APP_PORT=" in clean_value:
+            continue
+        os.environ.setdefault(key.strip(), clean_value)
 
 
 @dataclass(frozen=True)
