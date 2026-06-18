@@ -15,7 +15,7 @@
     .brand { font-weight:900; letter-spacing:-.04em; font-size:24px; }
     .menu { display:flex; gap:8px; flex-wrap:wrap; }
     .menu a { color: var(--text); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:var(--panel); }
-    .hero, .card, .cart, .checkout, .cms-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .hero, .card, .cart, .checkout, .cms-panel, .voice-call { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
     .hero { padding: 30px; }
     h1 { margin: 0 0 8px; font-size: clamp(40px, 7vw, 76px); letter-spacing: -.07em; line-height: .95; }
     h2, h3 { letter-spacing: -.03em; }
@@ -27,11 +27,14 @@
     .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
     .sections { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:18px; }
-    .card, .cart, .checkout, .cms-panel { padding: 16px; }
+    .card, .cart, .checkout, .cms-panel, .voice-call { padding: 16px; }
     .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
     .muted { color: var(--muted); }
     .price { font-size: 24px; font-weight: 900; }
     .status { margin-top: 14px; color: var(--muted); font-size: 14px; }
+    .callback-pill { align-items:center; background:var(--soft); border:1px solid var(--line); border-radius:999px; color:var(--muted); display:inline-flex; font-size:12px; font-weight:800; gap:8px; padding:7px 10px; }
+    .dot { background:#fbbf24; border-radius:50%; box-shadow:0 0 0 5px rgba(251,191,36,.12); height:9px; width:9px; }
+    .dot.ready { background:#34d399; box-shadow:0 0 0 5px rgba(52,211,153,.12); }
     .cart-line { border-top: 1px solid var(--line); padding: 12px 0; }
     .summary { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
     .summary div { display:flex; justify-content:space-between; margin: 6px 0; }
@@ -55,6 +58,7 @@
       <button id="search">Search</button>
       <button id="seed" class="secondary">Seed demo data</button>
       <button id="loadSample" class="secondary">Load sample API set</button>
+      <button id="callMe" class="secondary">Call me</button>
     </div>
     <div class="status" id="status">Ready</div>
   </section>
@@ -85,6 +89,25 @@
         <button id="placeOrder">Place demo order</button>
         <div id="orderResult"></div>
       </section>
+      <section id="callPanel" class="voice-call hidden">
+        <span class="callback-pill"><span class="dot" id="callDot"></span> Voice concierge callback</span>
+        <h2>Want us to call?</h2>
+        <p class="muted">Use the same callback/escalation component pattern as the Voice Live receptionist demo. Ask for help finding items, placing an order, checking delivery or checking stock.</p>
+        <label class="muted">Name</label>
+        <input id="callName" value="Avery Hill">
+        <label class="muted">Phone</label>
+        <input id="callPhone" value="+447700900123">
+        <label class="muted">What can we help with?</label>
+        <select id="callTopic">
+          <option value="find">Find items</option>
+          <option value="order">Order items</option>
+          <option value="shipping">Check shipping status</option>
+          <option value="stock">Check stock</option>
+        </select>
+        <input id="callReason" value="Help me find a waterproof jacket and check stock">
+        <button id="requestCall">Request callback</button>
+        <div id="callResult" class="status"></div>
+      </section>
     </aside>
   </section>
 </main>
@@ -96,6 +119,7 @@
   const query = document.getElementById('query');
   const cartLines = document.getElementById('cartLines');
   const cartSummary = document.getElementById('cartSummary');
+  let lastProductId = '';
 
   function esc(value) {
     return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
@@ -135,6 +159,7 @@
 
   function renderProducts(results) {
     const items = (results || []).map(hit => hit.product || hit);
+    if (items[0]) lastProductId = items[0].id;
     grid.innerHTML = items.map(product => `
       <article class="card">
         <span class="tag">${esc(product.category)}</span>
@@ -201,6 +226,23 @@
     checkoutPanel.classList.remove('hidden');
     await loadSampleSet();
     await refreshCart();
+  };
+  document.getElementById('callMe').onclick = () => {
+    callPanel.classList.remove('hidden');
+    callResult.textContent = 'Tell us what you need and we will request a demo callback.';
+  };
+  document.getElementById('requestCall').onclick = async () => {
+    callDot.classList.remove('ready');
+    const response = await api('POST', '/api/retail/call-me', {
+      name: callName.value,
+      phone: callPhone.value,
+      topic: callTopic.value,
+      reason: callReason.value,
+      productId: lastProductId,
+      preferredWindow: 'ASAP'
+    });
+    callDot.classList.add('ready');
+    callResult.innerHTML = `Callback <strong>${esc(response.callback.id)}</strong> requested for ${esc(response.callback.phone)} · ${esc(response.callback.topic)}`;
   };
   document.getElementById('placeOrder').onclick = async () => {
     const result = await api('POST', '/api/retail/checkout', {

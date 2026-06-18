@@ -144,6 +144,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
     cms = load_cms()
     carts: dict[str, dict[str, Any]] = {}
     orders: dict[str, dict[str, Any]] = {}
+    callbacks: list[dict[str, Any]] = []
 
     def require_action(action: int, method: int, path: int) -> None:
         actual, status_class = route_action(action, method, path)
@@ -407,6 +408,26 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
             return response.with_json({"error": "order not found"})
         return response.with_json({"order": order})
 
+    def call_me(request: Request, response: Response) -> Response:
+        require_action(21, 2, 21)
+        payload = json_body(request)
+        callback = {
+            "id": "cb-" + uuid.uuid4().hex[:10],
+            "status": "REQUESTED",
+            "name": str(payload.get("name") or "Store visitor"),
+            "phone": str(payload.get("phone") or ""),
+            "reason": str(payload.get("reason") or "Shopping help"),
+            "topic": str(payload.get("topic") or "find/order/shipping/stock"),
+            "productId": str(payload.get("productId") or ""),
+            "preferredWindow": str(payload.get("preferredWindow") or "ASAP"),
+        }
+        callbacks.append(callback)
+        return response.with_json({"callback": callback, "callbacks": callbacks})
+
+    def callback_list(_request: Request, response: Response) -> Response:
+        require_action(22, 1, 22)
+        return response.with_json({"callbacks": callbacks})
+
     return [
         Route("GET", "/", home),
         Route("GET", "/retail", home),
@@ -433,6 +454,8 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         Route("PUT", "/api/retail/cart/{id}", cart_update),
         Route("POST", "/api/retail/checkout", checkout),
         Route("GET", "/api/retail/orders/{id}", order_get),
+        Route("POST", "/api/retail/call-me", call_me),
+        Route("GET", "/api/retail/callbacks", callback_list),
     ]
 
 

@@ -28,6 +28,8 @@ def main() -> None:
         routes = make_routes(bridge)
         assert route_action(1, 1, 1) == (1, 2)
         assert route_action(20, 2, 20) == (20, 2)
+        assert route_action(21, 2, 21) == (21, 2)
+        assert route_action(22, 1, 22) == (22, 2)
         assert route_action(20, 1, 1) == (0, 4)
         home = call(routes, "GET", "/")
         assert "siteName" in home
@@ -81,6 +83,21 @@ def main() -> None:
         assert checkout["order"]["summary"]["policy"] == "picoscript:checkout_policy.pc"
         order = call(routes, "GET", f"/api/retail/orders/{checkout['order']['id']}")
         assert order["order"]["id"] == checkout["order"]["id"]
+        callback = call(
+            routes,
+            "POST",
+            "/api/retail/call-me",
+            {
+                "name": "Avery Hill",
+                "phone": "+447700900123",
+                "reason": "Help finding waterproof jackets and checking stock",
+                "topic": "find",
+                "productId": "aurora-shell",
+            },
+        )
+        assert callback["callback"]["status"] == "REQUESTED"
+        callbacks = call(routes, "GET", "/api/retail/callbacks")
+        assert callbacks["callbacks"][0]["phone"] == "+447700900123"
     print("picostack retail demo smoke ok")
 
 

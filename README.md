@@ -52,6 +52,8 @@ http://127.0.0.1:8787/
 | `PUT` | `/api/retail/cart/{id}` | update/remove cart item |
 | `POST` | `/api/retail/checkout` | place demo order |
 | `GET` | `/api/retail/orders/{id}` | get demo order |
+| `POST` | `/api/retail/call-me` | request a demo store callback |
+| `GET` | `/api/retail/callbacks` | list demo callback requests |
 
 Example:
 
@@ -85,6 +87,14 @@ curl -X POST http://127.0.0.1:8787/api/retail/cart \
 curl -X POST http://127.0.0.1:8787/api/retail/checkout \
   -H 'Content-Type: application/json' \
   -d '{"cartId":"demo-cart","customerId":"cust-demo-hiker","shippingMethodId":"standard","paymentMethodId":"demo-card","promoCode":"SUMMIT10"}'
+```
+
+Callback example:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/retail/call-me \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Avery Hill","phone":"+447700900123","topic":"stock","reason":"Please check stock on Aurora Storm Shell Jacket"}'
 ```
 
 ## Validate
