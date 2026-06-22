@@ -48,6 +48,22 @@ def main() -> None:
         assert store_sample["Title"] == "Pico Outfitters"
         products = call(routes, "GET", "/api/retail/products")
         assert products["totalSize"] >= 1
+        upsert = bridge.upsert_product(
+            {
+                "sku": "SMOKE-SKU-001",
+                "title": "Smoke Test Product",
+                "description": "SKU keyed smoke product",
+                "category": "hardware",
+                "brand": "Pico Test",
+                "tags": ["smoke", "sku", "hardware"],
+                "price": 12.34,
+                "inventory": 321,
+            }
+        )
+        assert upsert["synced"] is True
+        assert bridge.product("SMOKE-SKU-001")["title"] == "Smoke Test Product"
+        page = bridge.products_page(0, 10)
+        assert page["returned"] <= 10
         sample = call(routes, "GET", "/api/demo/catalog")
         assert sample["site"]["SiteName"] == "Pico Outfitters"
         assert sample["customers"]

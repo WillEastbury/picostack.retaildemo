@@ -90,6 +90,22 @@ class RetailBridge:
             fn.restype = ctypes.c_char_p
         self._lib.demo_event.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
         self._lib.demo_event.restype = ctypes.c_char_p
+        self._lib.demo_products_page.argtypes = [ctypes.c_int, ctypes.c_int]
+        self._lib.demo_products_page.restype = ctypes.c_char_p
+        self._lib.demo_upsert_product.argtypes = [
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_double,
+            ctypes.c_uint,
+            ctypes.c_int,
+        ]
+        self._lib.demo_upsert_product.restype = ctypes.c_char_p
+        self._lib.demo_persist_index.argtypes = []
+        self._lib.demo_persist_index.restype = ctypes.c_char_p
 
     def _decode(self, value: bytes) -> Any:
         return json.loads(value.decode("utf-8"))
@@ -100,8 +116,40 @@ class RetailBridge:
     def products(self) -> Any:
         return self._decode(self._lib.demo_products())
 
+    def products_page(self, offset: int = 0, limit: int = 50) -> Any:
+        return self._decode(self._lib.demo_products_page(offset, limit))
+
     def product(self, product_id: str) -> Any:
         return self._decode(self._lib.demo_product(product_id.encode("utf-8")))
+
+    def upsert_product(self, product: dict[str, Any], persist: bool = True) -> Any:
+        sku = str(product.get("sku") or product.get("id") or product.get("SKU") or "").strip()
+        if not sku:
+            return {"error": "sku is required"}
+        title = str(product.get("title") or product.get("name") or product.get("Name") or sku)
+        description = str(product.get("description") or product.get("Description") or "")
+        category = str(product.get("category") or product.get("Category") or "general")
+        brand = str(product.get("brand") or product.get("Brand") or "Pico Retail")
+        tags_value = product.get("tags") or product.get("Tags") or category
+        tags = " ".join(str(item) for item in tags_value) if isinstance(tags_value, list) else str(tags_value)
+        price = float(product.get("price") or product.get("BaseListPrice") or product.get("baseListPrice") or 0)
+        inventory = int(product.get("inventory") or product.get("QtyAvailable") or product.get("qtyAvailable") or product.get("stock") or 0)
+        return self._decode(
+            self._lib.demo_upsert_product(
+                sku.encode("utf-8"),
+                title.encode("utf-8"),
+                description.encode("utf-8"),
+                category.encode("utf-8"),
+                brand.encode("utf-8"),
+                tags.encode("utf-8"),
+                price,
+                inventory,
+                1 if persist else 0,
+            )
+        )
+
+    def persist_index(self) -> Any:
+        return self._decode(self._lib.demo_persist_index())
 
     def search(self, query: str) -> Any:
         return self._decode(self._lib.demo_search(query.encode("utf-8")))
@@ -290,13 +338,20 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         products_payload = bridge.products()
         return {str(item["id"]): item for item in products_payload.get("products", [])}
 
+    def get_product_by_sku(product_id: str) -> dict[str, Any] | None:
+        product_map = get_product_map()
+        product = product_map.get(product_id)
+        if product:
+            return product
+        product = bridge.product(product_id)
+        return None if "error" in product else product
+
     def build_cart(cart_id: str) -> dict[str, Any]:
         cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})
-        product_map = get_product_map()
         lines = []
         subtotal = 0.0
         for item in cart["items"]:
-            product = product_map.get(item["productId"])
+            product = get_product_by_sku(item["productId"])
             if not product:
                 continue
             quantity = max(1, int(item.get("quantity", 1)))
@@ -318,8 +373,7 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         cart_id = str(payload.get("cartId") or "demo-cart")
         product_id = str(payload.get("productId") or "")
         quantity = max(1, int(payload.get("quantity") or 1))
-        product_map = get_product_map()
-        if product_id not in product_map:
+        if get_product_by_sku(product_id) is None:
             response.status = 404
             return response.with_json({"error": "product not found"})
         cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})

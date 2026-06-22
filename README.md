@@ -58,6 +58,12 @@ http://127.0.0.1:8787/
 | `GET` | `/api/retail/callbacks` | list demo callback requests |
 | `GET` | `/api/retail/voice/config` | browser voice configuration and retail tool schema |
 | `WS` | `/ws/browser-voice` | browser microphone to Azure Voice Live bridge |
+| `GET` | `/api/product-service/products?offset=0&limit=50` | paged SKU-keyed product list |
+| `GET` | `/api/product-service/products/{sku}` | product by SKU |
+| `POST` | `/api/product-service/products` | create/update one product or `{products:[...]}` |
+| `POST` | `/api/product-service/products:sync` | bulk sync products by SKU |
+| `POST` | `/api/product-service/products:upload` | upload JSON/CSV product file |
+| `POST` | `/api/product-service/products:generate` | generate deterministic load-test products |
 
 Example:
 
@@ -99,6 +105,30 @@ Callback example:
 curl -X POST http://127.0.0.1:8787/api/retail/call-me \
   -H 'Content-Type: application/json' \
   -d '{"name":"Avery Hill","phone":"+447700900123","topic":"stock","reason":"Please check stock on Aurora Storm Shell Jacket"}'
+```
+
+Product service examples:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/product-service/products \
+  -H 'Content-Type: application/json' \
+  -d '{"sku":"SKU-DEMO-001","title":"Demo product","description":"Created through the product service","category":"hardware","brand":"Pico","tags":["demo","hardware"],"price":19.99,"inventory":42}'
+
+curl -X POST http://127.0.0.1:8787/api/product-service/products:generate \
+  -H 'Content-Type: application/json' \
+  -d '{"count":5000,"seed":42}'
+
+curl -F "file=@products.csv" http://127.0.0.1:8787/api/product-service/products:upload
+```
+
+Load test:
+
+```bash
+python3 scripts/load_test_products.py \
+  --base-url http://127.0.0.1:8787 \
+  --count 5000 \
+  --requests 2000 \
+  --concurrency 20
 ```
 
 Voice setup:

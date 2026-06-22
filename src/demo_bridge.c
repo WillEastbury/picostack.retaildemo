@@ -48,12 +48,64 @@ const char *demo_products(void) {
     return json_or_error(picowal_retail_products_json(&g_retail, g_json, sizeof(g_json)));
 }
 
+const char *demo_products_page(int offset, int limit) {
+    if (!g_ready) {
+        snprintf(g_json, sizeof(g_json), "{\"error\":\"demo not initialized\"}");
+        return g_json;
+    }
+    if (offset < 0) offset = 0;
+    if (limit <= 0 || limit > 200) limit = 50;
+    return json_or_error(picowal_retail_products_page_json(&g_retail, (uint32_t)offset, (uint32_t)limit, g_json, sizeof(g_json)));
+}
+
 const char *demo_product(const char *id) {
     if (!g_ready) {
         snprintf(g_json, sizeof(g_json), "{\"error\":\"demo not initialized\"}");
         return g_json;
     }
     return json_or_error(picowal_retail_product_json(&g_retail, id ? id : "", g_json, sizeof(g_json)));
+}
+
+const char *demo_upsert_product(const char *sku,
+                                const char *title,
+                                const char *description,
+                                const char *category,
+                                const char *brand,
+                                const char *tags,
+                                double price,
+                                unsigned int inventory,
+                                int persist) {
+    if (!g_ready) {
+        snprintf(g_json, sizeof(g_json), "{\"error\":\"demo not initialized\"}");
+        return g_json;
+    }
+    picowal_retail_product_t product;
+    memset(&product, 0, sizeof(product));
+    snprintf(product.id, sizeof(product.id), "%s", sku ? sku : "");
+    snprintf(product.title, sizeof(product.title), "%s", title ? title : "");
+    snprintf(product.description, sizeof(product.description), "%s", description ? description : "");
+    snprintf(product.category, sizeof(product.category), "%s", category ? category : "");
+    snprintf(product.brand, sizeof(product.brand), "%s", brand ? brand : "");
+    snprintf(product.tags, sizeof(product.tags), "%s", tags ? tags : "");
+    product.price = (float)price;
+    product.inventory = inventory;
+    picowal_search_status_t status = persist
+        ? picowal_retail_upsert(&g_retail, &product)
+        : picowal_retail_upsert_deferred(&g_retail, &product);
+    if (status != PICOWAL_SEARCH_OK) return json_or_error(status);
+    snprintf(g_json, sizeof(g_json), "{\"sku\":\"%s\",\"synced\":true}", product.id);
+    return g_json;
+}
+
+const char *demo_persist_index(void) {
+    if (!g_ready) {
+        snprintf(g_json, sizeof(g_json), "{\"error\":\"demo not initialized\"}");
+        return g_json;
+    }
+    picowal_search_status_t status = picowal_retail_persist_index(&g_retail);
+    if (status != PICOWAL_SEARCH_OK) return json_or_error(status);
+    snprintf(g_json, sizeof(g_json), "{\"persisted\":true}");
+    return g_json;
 }
 
 const char *demo_search(const char *query) {

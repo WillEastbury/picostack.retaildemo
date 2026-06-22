@@ -34,10 +34,16 @@ curl -fsS -X POST http://127.0.0.1:8789/api/retail/search \
   -H 'Content-Type: application/json' \
   -d '{"query":"waterproof jacket"}' >/tmp/picostack_search.json
 curl -fsS http://127.0.0.1:8789/api/retail/voice/config >/tmp/picostack_voice.json
+curl -fsS -X POST http://127.0.0.1:8789/api/product-service/products:generate \
+  -H 'Content-Type: application/json' \
+  -d '{"count":50,"seed":7}' >/tmp/picostack_generate.json
+curl -fsS 'http://127.0.0.1:8789/api/product-service/products?offset=0&limit=5' >/tmp/picostack_product_page.json
 
 grep -q "PicoStack Retail Search" /tmp/picostack_home.html
 grep -q "results" /tmp/picostack_search.json
 grep -q "find_items" /tmp/picostack_voice.json
+grep -q "generated" /tmp/picostack_generate.json
+grep -q "products" /tmp/picostack_product_page.json
 
 kill "$pid"
 wait "$pid" 2>/dev/null || true
