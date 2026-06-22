@@ -38,4 +38,4 @@ RUN mkdir -p build \
 
 EXPOSE 8080
 
-CMD ["uvicorn", "src.retail_asgi_server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["python", "-m", "uvicorn", "src.retail_asgi_server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]
