@@ -339,12 +339,14 @@ def make_routes(bridge: RetailBridge) -> list[Route]:
         return {str(item["id"]): item for item in products_payload.get("products", [])}
 
     def get_product_by_sku(product_id: str) -> dict[str, Any] | None:
-        product_map = get_product_map()
-        product = product_map.get(product_id)
-        if product:
-            return product
         product = bridge.product(product_id)
-        return None if "error" in product else product
+        if "error" not in product:
+            return product
+        try:
+            product_map = get_product_map()
+        except Exception:
+            product_map = {}
+        return product_map.get(product_id)
 
     def build_cart(cart_id: str) -> dict[str, Any]:
         cart = carts.setdefault(cart_id, {"id": cart_id, "items": []})
