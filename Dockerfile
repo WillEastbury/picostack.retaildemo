@@ -11,7 +11,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt
 
 RUN rm -rf /deps/picowal /deps/picowal.retailprimitives /deps/picoweb /deps/BareMetalJsTools /deps/picoscript \
     && git clone --depth 1 --branch picowal-c-api https://github.com/WillEastbury/picowal.git /deps/picowal \
