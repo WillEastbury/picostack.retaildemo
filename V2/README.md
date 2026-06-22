@@ -40,6 +40,7 @@ committed append blob segments, then materialize everything it needs in memory.
 | `SUMMARY.md` | Cross-page summary of the V2 platform, storage, endpoint, runtime, API and deployment design. |
 | `SYSTEM-SPECIFICATION.md` | Consolidated system specification for the platform, storage, partitioning, runtime, APIs and operations. |
 | `MODULE-LAYER-DESIGN.md` | Layered module design for API, auth, partitioning, domain services, runtime, indexing and blob storage. |
+| `V1-DEMO.md` | Runnable V1 FastAPI demo implementation and reusable module map. |
 | `ENGINEERING-GUARDRAILS.md` | Product quality, cost and reuse-first engineering guardrails. |
 | `SPECIFICATION.md` | End-to-end V2 product, ingestion, serving, ranking, safety and migration specification. |
 | `API-COMPATIBILITY.md` | External commerce REST API compatibility map for resources, methods, request concepts and response shapes. |
@@ -48,9 +49,10 @@ committed append blob segments, then materialize everything it needs in memory.
 | `INMEMORY-PYTHON-RUNTIME.md` | Embedded Python runtime design using raw catalog JSON, event logs, Parquet features and in-memory indexes. |
 | `PLATFORM-ARCHITECTURE.md` | Platform architecture mapping service capabilities to Python libraries, modules, runtime planes and deployment stages. |
 | `ARCHITECTURE-AMENDMENTS.md` | Rubber-duck review amendments covering live overlays, inventory precedence, events, pagination, scaling and schema hardening. |
-| `BLOB-STORAGE.md` | Cold blob snapshot and append blob tail-marker persistence model for the fully in-memory platform. |
+| `BLOB-STORAGE.md` | Blob snapshot and append blob tail-marker persistence model for the fully in-memory platform. |
 | `AZURE-TENANT-SERVICE-TOPOLOGY.md` | Azure tenant storage and endpoint topology using one blob container per tenant. |
 | `AKS-FASTAPI-DEV-OPERATIONS.md` | Lean AKS/FastAPI deployment, management pipeline, and authentication/STS design. |
+| `PRODUCTION-HARDENING.md` | Production hardening, security, logging, observability, performance and runbook design. |
 | `SCALEOUT-PARTITIONING.md` | Extensible hash partitioning, sticky routing and partitioned storage/runtime ownership for maximal scale-out. |
 | `MULTI-REGION-CLUSTERING.md` | Multi-region and multi-cluster routing, failover, CDN-like read behavior and region-aware partition ownership. |
 | `ENRICHMENT-COMPONENTS.md` | Enrichment pipeline components, outputs, quality issues and runtime materialization. |

@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Retail Search V2 Unified Specification</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f4ef;color:#242424;font-family:"Segoe UI",Aptos,Calibri,sans-serif;line-height:1.55}.shell{max-width:1500px;margin:auto;padding:24px}.hero,.tabs,.content,.tocbox{background:#fff;border:1px solid #dedede;border-radius:16px;box-shadow:0 18px 48px rgba(0,0,0,.12)}.hero{padding:32px;margin-bottom:18px}h1{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.04em;margin:.2em 0}.muted,.hero p{color:#5c5c5c}.tabs{position:sticky;top:0;z-index:10;display:flex;gap:6px;overflow:auto;padding:10px;margin-bottom:16px}.tab{border:1px solid #dedede;background:#f5f5f5;color:#242424;border-radius:10px;padding:9px 12px;white-space:nowrap;cursor:pointer}.tab.active{background:#b11f4b;color:#fff;border-color:#b11f4b;font-weight:700}.panel{display:none}.panel.active{display:block}.panelgrid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px}.panelgrid:not(:has(.tocbox)){display:block}.tocbox{position:sticky;top:82px;align-self:start;max-height:calc(100vh - 100px);overflow:auto;padding:14px}.toc{display:block;text-decoration:none;color:#242424;padding:6px 8px;border-radius:8px}.toc:hover{background:rgba(177,31,75,.08);color:#b11f4b}.l3{padding-left:22px;color:#5c5c5c}.content{padding:28px 36px;min-width:0}.content>h1:first-child{display:none}h2{border-top:1px solid #dedede;padding-top:24px;margin-top:1.5em}h2:first-of-type{border-top:0}h3{color:#b11f4b}code{font-family:Consolas,"Courier New",monospace;background:#f5f5f5;border:1px solid #dedede;border-radius:8px;padding:1px 5px}pre{overflow:auto;background:#fcfbf8;border:1px solid #dedede;border-left:4px solid #b11f4b;border-radius:10px;padding:14px}pre code{background:transparent;border:0}.table-wrap{overflow:auto;border:1px solid #dedede;border-radius:12px;margin:14px 0}table{border-collapse:collapse;width:100%;min-width:760px}th,td{border-bottom:1px solid #dedede;padding:10px;text-align:left;vertical-align:top}th{background:rgba(177,31,75,.08)}@media(max-width:900px){.panelgrid{display:block}.tocbox{position:static;margin-bottom:16px}.content{padding:22px}}</style></head><body><main class="shell"><section class="hero"><p class="muted">Retail Search V2</p><h1>Unified Specification</h1><p>System specification, module/layer design, blob-backed storage, partition ownership and rebalance behavior.</p></section><nav class="tabs"><button class="tab active" data-tab="summary">Summary</button><button class="tab" data-tab="system-specification">System Specification</button><button class="tab" data-tab="modules-layers">Modules &amp; Layers</button><button class="tab" data-tab="overview">Overview</button><button class="tab" data-tab="engineering-guardrails">Engineering Guardrails</button><button class="tab" data-tab="core-specification">Core Specification</button><button class="tab" data-tab="api-compatibility">API Compatibility</button><button class="tab" data-tab="build-plan">Build Plan</button><button class="tab" data-tab="python-api-host">Python API Host</button><button class="tab" data-tab="in-memory-runtime">In-Memory Runtime</button><button class="tab" data-tab="platform-architecture">Platform Architecture</button><button class="tab" data-tab="scale-out-partitioning">Scale-Out Partitioning</button><button class="tab" data-tab="multi-region-clustering">Multi-Region Clustering</button><button class="tab" data-tab="blob-storage">Blob Storage</button><button class="tab" data-tab="azure-tenant-topology">Azure Tenant Topology</button><button class="tab" data-tab="aks-fastapi-operations">AKS FastAPI Operations</button><button class="tab" data-tab="architecture-amendments">Architecture Amendments</button><button class="tab" data-tab="enrichment-components">Enrichment Components</button><button class="tab" data-tab="event-schemas">Event Schemas</button><button class="tab" data-tab="materialized-views">Materialized Views</button><button class="tab" data-tab="catalog-schema">Catalog Schema</button><button class="tab" data-tab="sample-catalog">Sample Catalog</button></nav><section class="panel active" data-panel="summary"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#what-we-are-building">What we are building</a><a class="toc l2" href="#overarching-guardrails">Overarching guardrails</a><a class="toc l2" href="#core-platform-principle">Core platform principle</a><a class="toc l2" href="#tenant-and-storage-model">Tenant and storage model</a><a class="toc l2" href="#endpoint-topology">Endpoint topology</a><a class="toc l2" href="#runtime-model">Runtime model</a><a class="toc l3" href="#immutable-base-runtime">Immutable base runtime</a><a class="toc l3" href="#mutable-live-overlay">Mutable live overlay</a><a class="toc l2" href="#commerce-compatible-api-areas">Commerce-compatible API areas</a><a class="toc l2" href="#product-and-catalog-model">Product and catalog model</a><a class="toc l2" href="#event-model">Event model</a><a class="toc l2" href="#enrichment-model">Enrichment model</a><a class="toc l2" href="#search-and-recommendation-capabilities">Search and recommendation capabilities</a><a class="toc l2" href="#aks-delivery-model">AKS delivery model</a><a class="toc l2" href="#first-build-slice">First build slice</a></aside><article class="content"><h1 id="retail-search-v2-summary">Retail Search V2 Summary</h1>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Retail Search V2 Unified Specification</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f4ef;color:#242424;font-family:"Segoe UI",Aptos,Calibri,sans-serif;line-height:1.55}.shell{max-width:1500px;margin:auto;padding:24px}.hero,.tabs,.content,.tocbox{background:#fff;border:1px solid #dedede;border-radius:16px;box-shadow:0 18px 48px rgba(0,0,0,.12)}.hero{padding:32px;margin-bottom:18px}h1{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.04em;margin:.2em 0}.muted,.hero p{color:#5c5c5c}.tabs{position:sticky;top:0;z-index:10;display:flex;gap:6px;overflow:auto;padding:10px;margin-bottom:16px}.tab{border:1px solid #dedede;background:#f5f5f5;color:#242424;border-radius:10px;padding:9px 12px;white-space:nowrap;cursor:pointer}.tab.active{background:#b11f4b;color:#fff;border-color:#b11f4b;font-weight:700}.panel{display:none}.panel.active{display:block}.panelgrid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px}.panelgrid:not(:has(.tocbox)){display:block}.tocbox{position:sticky;top:82px;align-self:start;max-height:calc(100vh - 100px);overflow:auto;padding:14px}.toc{display:block;text-decoration:none;color:#242424;padding:6px 8px;border-radius:8px}.toc:hover{background:rgba(177,31,75,.08);color:#b11f4b}.l3{padding-left:22px;color:#5c5c5c}.content{padding:28px 36px;min-width:0}.content>h1:first-child{display:none}h2{border-top:1px solid #dedede;padding-top:24px;margin-top:1.5em}h2:first-of-type{border-top:0}h3{color:#b11f4b}code{font-family:Consolas,"Courier New",monospace;background:#f5f5f5;border:1px solid #dedede;border-radius:8px;padding:1px 5px}pre{overflow:auto;background:#fcfbf8;border:1px solid #dedede;border-left:4px solid #b11f4b;border-radius:10px;padding:14px}pre code{background:transparent;border:0}.table-wrap{overflow:auto;border:1px solid #dedede;border-radius:12px;margin:14px 0}table{border-collapse:collapse;width:100%;min-width:760px}th,td{border-bottom:1px solid #dedede;padding:10px;text-align:left;vertical-align:top}th{background:rgba(177,31,75,.08)}@media(max-width:900px){.panelgrid{display:block}.tocbox{position:static;margin-bottom:16px}.content{padding:22px}}</style></head><body><main class="shell"><section class="hero"><p class="muted">Retail Search V2</p><h1>Unified Specification</h1><p>Includes the V1 FastAPI demo module map and endpoint documentation.</p></section><nav class="tabs"><button class="tab active" data-tab="summary">Summary</button><button class="tab" data-tab="system-specification">System Specification</button><button class="tab" data-tab="modules-layers">Modules &amp; Layers</button><button class="tab" data-tab="v1-demo">V1 Demo</button><button class="tab" data-tab="overview">Overview</button><button class="tab" data-tab="engineering-guardrails">Engineering Guardrails</button><button class="tab" data-tab="production-hardening">Production Hardening</button><button class="tab" data-tab="core-specification">Core Specification</button><button class="tab" data-tab="api-compatibility">API Compatibility</button><button class="tab" data-tab="build-plan">Build Plan</button><button class="tab" data-tab="python-api-host">Python API Host</button><button class="tab" data-tab="in-memory-runtime">In-Memory Runtime</button><button class="tab" data-tab="platform-architecture">Platform Architecture</button><button class="tab" data-tab="scale-out-partitioning">Scale-Out Partitioning</button><button class="tab" data-tab="multi-region-clustering">Multi-Region Clustering</button><button class="tab" data-tab="blob-storage">Blob Storage</button><button class="tab" data-tab="azure-tenant-topology">Azure Tenant Topology</button><button class="tab" data-tab="aks-fastapi-operations">AKS FastAPI Operations</button><button class="tab" data-tab="architecture-amendments">Architecture Amendments</button><button class="tab" data-tab="enrichment-components">Enrichment Components</button><button class="tab" data-tab="event-schemas">Event Schemas</button><button class="tab" data-tab="materialized-views">Materialized Views</button><button class="tab" data-tab="catalog-schema">Catalog Schema</button><button class="tab" data-tab="sample-catalog">Sample Catalog</button></nav><section class="panel active" data-panel="summary"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#what-we-are-building">What we are building</a><a class="toc l2" href="#overarching-guardrails">Overarching guardrails</a><a class="toc l2" href="#core-platform-principle">Core platform principle</a><a class="toc l2" href="#tenant-and-storage-model">Tenant and storage model</a><a class="toc l2" href="#endpoint-topology">Endpoint topology</a><a class="toc l2" href="#runtime-model">Runtime model</a><a class="toc l3" href="#immutable-base-runtime">Immutable base runtime</a><a class="toc l3" href="#mutable-live-overlay">Mutable live overlay</a><a class="toc l2" href="#commerce-compatible-api-areas">Commerce-compatible API areas</a><a class="toc l2" href="#product-and-catalog-model">Product and catalog model</a><a class="toc l2" href="#event-model">Event model</a><a class="toc l2" href="#enrichment-model">Enrichment model</a><a class="toc l2" href="#search-and-recommendation-capabilities">Search and recommendation capabilities</a><a class="toc l2" href="#aks-delivery-model">AKS delivery model</a><a class="toc l2" href="#first-build-slice">First build slice</a></aside><article class="content"><h1 id="retail-search-v2-summary">Retail Search V2 Summary</h1>
 <h2 id="what-we-are-building">What we are building</h2>
 <p>Retail Search V2 is a provider-neutral, commerce-compatible retail search and</p>
 <p>recommendations platform.</p>
@@ -805,7 +805,68 @@ retail_v2/routers/admin.py</code></pre>
 <li><code>domain.rules</code></li>
 <li><code>domain.recommend</code></li>
 <li><code>domain.admin</code></li>
-</ol></article></div></section><section class="panel" data-panel="overview"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#goals">Goals</a><a class="toc l2" href="#source-files">Source files</a><a class="toc l2" href="#top-level-catalog-shape">Top-level catalog shape</a><a class="toc l2" href="#product-shape">Product shape</a><a class="toc l2" href="#commerce-schema-compatibility-notes">Commerce schema compatibility notes</a><a class="toc l2" href="#product-api-surface-to-mirror">Product API surface to mirror</a><a class="toc l2" href="#retail-product-constructs">Retail product constructs</a><a class="toc l3" href="#primary-products">Primary products</a><a class="toc l3" href="#variant-products">Variant products</a><a class="toc l2" href="#serving-model">Serving model</a><a class="toc l2" href="#shared-ingestion-model">Shared ingestion model</a><a class="toc l2" href="#data-domains-to-onboard">Data domains to onboard</a><a class="toc l2" href="#kpi-and-optimization-strategy">KPI and optimization strategy</a><a class="toc l2" href="#business-rules-vs-ai-optimization">Business rules vs AI optimization</a><a class="toc l2" href="#api-familiarization">API familiarization</a><a class="toc l2" href="#etl-and-api-integration-phase">ETL and API integration phase</a><a class="toc l2" href="#backend-and-frontend-integration-phase">Backend and frontend integration phase</a><a class="toc l2" href="#pipeline-robustness-requirements">Pipeline robustness requirements</a><a class="toc l2" href="#staging-functional-test">Staging functional test</a><a class="toc l2" href="#implementation-acceptance-criteria">Implementation acceptance criteria</a><a class="toc l2" href="#migration-roadmap">Migration roadmap</a><a class="toc l2" href="#merchandising-and-business-goals">Merchandising and business goals</a><a class="toc l2" href="#clarification-question-flows">Clarification / question flows</a><a class="toc l2" href="#personalization">Personalization</a><a class="toc l2" href="#ai-commerce-search-capabilities">AI commerce search capabilities</a><a class="toc l3" href="#search">Search</a><a class="toc l3" href="#recommendations">Recommendations</a><a class="toc l2" href="#capability-needs-captured">Capability needs captured</a><a class="toc l2" href="#query-understanding-relevance-model-hook">Query understanding / relevance model hook</a><a class="toc l2" href="#conversational-refinement">Conversational refinement</a><a class="toc l2" href="#merchandising-console-requirements">Merchandising console requirements</a><a class="toc l2" href="#catalog-improvement-requirements">Catalog improvement requirements</a><a class="toc l2" href="#safety-and-responsibility-requirements">Safety and responsibility requirements</a><a class="toc l2" href="#update-model">Update model</a><a class="toc l2" href="#storage-relationship">Storage relationship</a></aside><article class="content"><h1 id="retail-search-v2">Retail Search V2</h1>
+</ol></article></div></section><section class="panel" data-panel="v1-demo"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#purpose">Purpose</a><a class="toc l2" href="#package">Package</a><a class="toc l2" href="#run-locally">Run locally</a><a class="toc l2" href="#endpoints">Endpoints</a><a class="toc l2" href="#what-is-implemented">What is implemented</a><a class="toc l2" href="#what-remains-for-production">What remains for production</a><a class="toc l2" href="#validate">Validate</a></aside><article class="content"><h1 id="v1-demo-implementation">V1 Demo Implementation</h1>
+<h2 id="purpose">Purpose</h2>
+<p>The V1 demo turns the platform specification into a small runnable Python</p>
+<p>implementation. It is intentionally modular so components can be extracted into</p>
+<p>OSS packages later.</p>
+<h2 id="package">Package</h2>
+<pre><code>src/retail_v2/</code></pre>
+<p>Reusable modules:</p>
+<div class="table-wrap"><table><thead><tr><th>Module</th><th>Responsibility</th></tr></thead><tbody>
+<tr><td><code>auth.py</code></td><td>Minimal STS/JWT issuer and verifier for tenant-scoped demo tokens.</td></tr>
+<tr><td><code>blob_store.py</code></td><td>Blob storage protocol plus local development adapter.</td></tr>
+<tr><td><code>paths.py</code></td><td>Tenant blob path conventions for products, features and append streams.</td></tr>
+<tr><td><code>partitioning.py</code></td><td>Stable hash partitioning and owner resolution.</td></tr>
+<tr><td><code>append_log.py</code></td><td>Ordered append record writer and tail marker generation.</td></tr>
+<tr><td><code>runtime.py</code></td><td>In-memory catalog runtime, product graph materialization and BM25-style search.</td></tr>
+<tr><td><code>services.py</code></td><td>Domain service glue for catalog, events, inventory, rules, search and recommendation.</td></tr>
+<tr><td><code>app.py</code></td><td>FastAPI app exposing the V1 demo endpoints.</td></tr>
+</tbody></table></div>
+<h2 id="run-locally">Run locally</h2>
+<pre><code>set PYTHONPATH=src
+python -m retail_v2</code></pre>
+<p>Default URL:</p>
+<pre><code>http://127.0.0.1:8797</code></pre>
+<h2 id="endpoints">Endpoints</h2>
+<div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>GET /healthz</code></td><td>Health check.</td></tr>
+<tr><td><code>POST /v2/auth/token</code></td><td>Issue a demo tenant-scoped token.</td></tr>
+<tr><td><code>GET /v2/status</code></td><td>Runtime and overlay status.</td></tr>
+<tr><td><code>GET /v2/partition/{key}</code></td><td>Resolve a partition route for a key.</td></tr>
+<tr><td><code>GET /v2/catalog/products</code></td><td>List products from the in-memory runtime.</td></tr>
+<tr><td><code>GET /v2/catalog/products/{product_id}</code></td><td>Fetch one product.</td></tr>
+<tr><td><code>POST /v2/search</code></td><td>Search catalog using the in-memory text index.</td></tr>
+<tr><td><code>POST /v2/recommend</code></td><td>Return simple related recommendations.</td></tr>
+<tr><td><code>POST /v2/userEvents:write</code></td><td>Append a user event with tail marker.</td></tr>
+<tr><td><code>POST /v2/inventory:set</code></td><td>Append inventory update and update live overlay.</td></tr>
+<tr><td><code>POST /v2/rules</code></td><td>Append rule/control update.</td></tr>
+</tbody></table></div>
+<h2 id="what-is-implemented">What is implemented</h2>
+<ul>
+<li>tenant-scoped token issuance/validation</li>
+<li>deterministic partition routing</li>
+<li>append records with tail markers</li>
+<li>blob-style path layout via a local development adapter</li>
+<li>in-memory runtime built from <code>V2/sample-catalog.json</code></li>
+<li>simple BM25-style keyword search</li>
+<li>simple content/category recommendation</li>
+<li>live overlays for events and inventory</li>
+<li>smoke test coverage</li>
+</ul>
+<h2 id="what-remains-for-production">What remains for production</h2>
+<ul>
+<li>Azure Blob adapter</li>
+<li>real blob lease integration</li>
+<li>dual/multi-write replica coordinator</li>
+<li>partition map persistence and ingress routing</li>
+<li>model integration/enrichment jobs</li>
+<li>packed runtime structures</li>
+<li>full rule compiler</li>
+<li>observability, hardening and admin UI</li>
+</ul>
+<h2 id="validate">Validate</h2>
+<pre><code>python tests\v2_smoke.py</code></pre></article></div></section><section class="panel" data-panel="overview"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#goals">Goals</a><a class="toc l2" href="#source-files">Source files</a><a class="toc l2" href="#top-level-catalog-shape">Top-level catalog shape</a><a class="toc l2" href="#product-shape">Product shape</a><a class="toc l2" href="#commerce-schema-compatibility-notes">Commerce schema compatibility notes</a><a class="toc l2" href="#product-api-surface-to-mirror">Product API surface to mirror</a><a class="toc l2" href="#retail-product-constructs">Retail product constructs</a><a class="toc l3" href="#primary-products">Primary products</a><a class="toc l3" href="#variant-products">Variant products</a><a class="toc l2" href="#serving-model">Serving model</a><a class="toc l2" href="#shared-ingestion-model">Shared ingestion model</a><a class="toc l2" href="#data-domains-to-onboard">Data domains to onboard</a><a class="toc l2" href="#kpi-and-optimization-strategy">KPI and optimization strategy</a><a class="toc l2" href="#business-rules-vs-ai-optimization">Business rules vs AI optimization</a><a class="toc l2" href="#api-familiarization">API familiarization</a><a class="toc l2" href="#etl-and-api-integration-phase">ETL and API integration phase</a><a class="toc l2" href="#backend-and-frontend-integration-phase">Backend and frontend integration phase</a><a class="toc l2" href="#pipeline-robustness-requirements">Pipeline robustness requirements</a><a class="toc l2" href="#staging-functional-test">Staging functional test</a><a class="toc l2" href="#implementation-acceptance-criteria">Implementation acceptance criteria</a><a class="toc l2" href="#migration-roadmap">Migration roadmap</a><a class="toc l2" href="#merchandising-and-business-goals">Merchandising and business goals</a><a class="toc l2" href="#clarification-question-flows">Clarification / question flows</a><a class="toc l2" href="#personalization">Personalization</a><a class="toc l2" href="#ai-commerce-search-capabilities">AI commerce search capabilities</a><a class="toc l3" href="#search">Search</a><a class="toc l3" href="#recommendations">Recommendations</a><a class="toc l2" href="#capability-needs-captured">Capability needs captured</a><a class="toc l2" href="#query-understanding-relevance-model-hook">Query understanding / relevance model hook</a><a class="toc l2" href="#conversational-refinement">Conversational refinement</a><a class="toc l2" href="#merchandising-console-requirements">Merchandising console requirements</a><a class="toc l2" href="#catalog-improvement-requirements">Catalog improvement requirements</a><a class="toc l2" href="#safety-and-responsibility-requirements">Safety and responsibility requirements</a><a class="toc l2" href="#update-model">Update model</a><a class="toc l2" href="#storage-relationship">Storage relationship</a></aside><article class="content"><h1 id="retail-search-v2">Retail Search V2</h1>
 <p>V2 is the proposed production direction for the retail search service:</p>
 <pre><code>cold retail catalog JSON snapshot
   + committed append blobs
@@ -845,6 +906,7 @@ retail_v2/routers/admin.py</code></pre>
 <tr><td><code>SUMMARY.md</code></td><td>Cross-page summary of the V2 platform, storage, endpoint, runtime, API and deployment design.</td></tr>
 <tr><td><code>SYSTEM-SPECIFICATION.md</code></td><td>Consolidated system specification for the platform, storage, partitioning, runtime, APIs and operations.</td></tr>
 <tr><td><code>MODULE-LAYER-DESIGN.md</code></td><td>Layered module design for API, auth, partitioning, domain services, runtime, indexing and blob storage.</td></tr>
+<tr><td><code>V1-DEMO.md</code></td><td>Runnable V1 FastAPI demo implementation and reusable module map.</td></tr>
 <tr><td><code>ENGINEERING-GUARDRAILS.md</code></td><td>Product quality, cost and reuse-first engineering guardrails.</td></tr>
 <tr><td><code>SPECIFICATION.md</code></td><td>End-to-end V2 product, ingestion, serving, ranking, safety and migration specification.</td></tr>
 <tr><td><code>API-COMPATIBILITY.md</code></td><td>External commerce REST API compatibility map for resources, methods, request concepts and response shapes.</td></tr>
@@ -853,9 +915,10 @@ retail_v2/routers/admin.py</code></pre>
 <tr><td><code>INMEMORY-PYTHON-RUNTIME.md</code></td><td>Embedded Python runtime design using raw catalog JSON, event logs, Parquet features and in-memory indexes.</td></tr>
 <tr><td><code>PLATFORM-ARCHITECTURE.md</code></td><td>Platform architecture mapping service capabilities to Python libraries, modules, runtime planes and deployment stages.</td></tr>
 <tr><td><code>ARCHITECTURE-AMENDMENTS.md</code></td><td>Rubber-duck review amendments covering live overlays, inventory precedence, events, pagination, scaling and schema hardening.</td></tr>
-<tr><td><code>BLOB-STORAGE.md</code></td><td>Cold blob snapshot and append blob tail-marker persistence model for the fully in-memory platform.</td></tr>
+<tr><td><code>BLOB-STORAGE.md</code></td><td>Blob snapshot and append blob tail-marker persistence model for the fully in-memory platform.</td></tr>
 <tr><td><code>AZURE-TENANT-SERVICE-TOPOLOGY.md</code></td><td>Azure tenant storage and endpoint topology using one blob container per tenant.</td></tr>
 <tr><td><code>AKS-FASTAPI-DEV-OPERATIONS.md</code></td><td>Lean AKS/FastAPI deployment, management pipeline, and authentication/STS design.</td></tr>
+<tr><td><code>PRODUCTION-HARDENING.md</code></td><td>Production hardening, security, logging, observability, performance and runbook design.</td></tr>
 <tr><td><code>SCALEOUT-PARTITIONING.md</code></td><td>Extensible hash partitioning, sticky routing and partitioned storage/runtime ownership for maximal scale-out.</td></tr>
 <tr><td><code>MULTI-REGION-CLUSTERING.md</code></td><td>Multi-region and multi-cluster routing, failover, CDN-like read behavior and region-aware partition ownership.</td></tr>
 <tr><td><code>ENRICHMENT-COMPONENTS.md</code></td><td>Enrichment pipeline components, outputs, quality issues and runtime materialization.</td></tr>
@@ -1589,7 +1652,231 @@ rulePlan</code></pre>
 <li>If it is an external service beyond AKS/Azure Storage, is its use justified</li>
 </ol>
 <p>with cost, latency, failure-mode and exit-path analysis?</p>
-<p>If the answer is no, redesign before implementation.</p></article></div></section><section class="panel" data-panel="core-specification"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#1-purpose">1. Purpose</a><a class="toc l2" href="#2-goals">2. Goals</a><a class="toc l2" href="#3-non-goals-for-the-first-implementation">3. Non-goals for the first implementation</a><a class="toc l2" href="#4-top-level-catalog-snapshot">4. Top-level catalog snapshot</a><a class="toc l2" href="#5-shared-ingestion-model">5. Shared ingestion model</a><a class="toc l2" href="#6-product-model">6. Product model</a><a class="toc l3" href="#6-1-product-types">6.1 Product types</a><a class="toc l3" href="#6-2-primary-products">6.2 Primary products</a><a class="toc l3" href="#6-3-variant-products">6.3 Variant products</a><a class="toc l3" href="#6-4-collection-products">6.4 Collection products</a><a class="toc l2" href="#7-commerce-product-compatibility">7. Commerce product compatibility</a><a class="toc l2" href="#8-attribute-model">8. Attribute model</a><a class="toc l2" href="#9-inventory-model">9. Inventory model</a><a class="toc l2" href="#10-user-event-model">10. User event model</a><a class="toc l2" href="#11-ingestion-and-etl">11. Ingestion and ETL</a><a class="toc l2" href="#12-materialized-runtime">12. Materialized runtime</a><a class="toc l2" href="#13-retrieval-and-ranking">13. Retrieval and ranking</a><a class="toc l2" href="#14-search-capability">14. Search capability</a><a class="toc l2" href="#15-recommendations-capability">15. Recommendations capability</a><a class="toc l3" href="#15-1-curated-recommendation-models">15.1 Curated recommendation models</a><a class="toc l3" href="#15-2-touchpoint-coverage">15.2 Touchpoint coverage</a><a class="toc l3" href="#15-3-cross-sell-and-upsell">15.3 Cross-sell and upsell</a><a class="toc l3" href="#15-4-frictionless-fallback-experience">15.4 Frictionless fallback experience</a><a class="toc l3" href="#15-5-search-based-recommendations">15.5 Search-based recommendations</a><a class="toc l3" href="#15-6-real-time-predictions">15.6 Real-time predictions</a><a class="toc l2" href="#16-cold-start-handling">16. Cold-start handling</a><a class="toc l2" href="#17-predictive-autocomplete">17. Predictive autocomplete</a><a class="toc l2" href="#18-query-understanding-and-conversational-refinement">18. Query understanding and conversational refinement</a><a class="toc l2" href="#19-real-time-personalization-and-shopper-personas">19. Real-time personalization and shopper personas</a><a class="toc l2" href="#20-merchandising-controls">20. Merchandising controls</a><a class="toc l2" href="#21-serving-configs-and-kpis">21. Serving configs and KPIs</a><a class="toc l2" href="#22-catalog-enrichment">22. Catalog enrichment</a><a class="toc l2" href="#23-product-api-surface">23. Product API surface</a><a class="toc l2" href="#24-serving-api-surface">24. Serving API surface</a><a class="toc l2" href="#25-safety-privacy-and-responsibility">25. Safety, privacy and responsibility</a><a class="toc l2" href="#26-composable-commerce-architecture">26. Composable commerce architecture</a><a class="toc l2" href="#27-evaluation-and-testing">27. Evaluation and testing</a><a class="toc l2" href="#28-migration-roadmap">28. Migration roadmap</a><a class="toc l2" href="#29-completion-criteria">29. Completion criteria</a></aside><article class="content"><h1 id="retail-search-v2-specification">Retail Search V2 Specification</h1>
+<p>If the answer is no, redesign before implementation.</p></article></div></section><section class="panel" data-panel="production-hardening"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#1-purpose">1. Purpose</a><a class="toc l2" href="#2-production-modules-to-build">2. Production modules to build</a><a class="toc l2" href="#3-revised-implementation-size">3. Revised implementation size</a><a class="toc l2" href="#4-production-design-principles">4. Production design principles</a><a class="toc l2" href="#5-logging-design">5. Logging design</a><a class="toc l2" href="#6-metrics-design">6. Metrics design</a><a class="toc l2" href="#7-security-hardening">7. Security hardening</a><a class="toc l2" href="#8-data-quality-hardening">8. Data quality hardening</a><a class="toc l2" href="#9-runtime-safety">9. Runtime safety</a><a class="toc l2" href="#10-blob-replica-write-resilience">10. Blob/replica write resilience</a><a class="toc l2" href="#11-performance-optimization-priorities">11. Performance optimization priorities</a><a class="toc l2" href="#12-load-and-chaos-testing">12. Load and chaos testing</a><a class="toc l2" href="#13-aks-hardening">13. AKS hardening</a><a class="toc l2" href="#14-runbooks">14. Runbooks</a></aside><article class="content"><h1 id="production-hardening-security-logging-and-performance">Production Hardening, Security, Logging and Performance</h1>
+<h2 id="1-purpose">1. Purpose</h2>
+<p>This document captures the productionizing work required beyond the first useful</p>
+<p>implementation.</p>
+<p>The goal is to harden the platform while preserving the core constraints:</p>
+<ul>
+<li>state-of-the-art retail search and recommendations</li>
+<li>less than <code>$0.10 / 1,000</code> served requests</li>
+<li>reuse proven libraries before building custom infrastructure</li>
+<li>fully in-memory serving</li>
+<li>durable state only in blob storage</li>
+<li>ephemeral containers</li>
+<li>partitioned data and sticky routing</li>
+<li>explicit justification for external services beyond AKS and Azure Storage</li>
+</ul>
+<h2 id="2-production-modules-to-build">2. Production modules to build</h2>
+<div class="table-wrap"><table><thead><tr><th>Area</th><th>What to build</th><th>Est. LoC</th></tr></thead><tbody>
+<tr><td>Structured logging</td><td>JSON logs, correlation IDs, tenant/partition/request IDs, redaction</td><td>300-600</td></tr>
+<tr><td>Metrics</td><td>Prometheus metrics, latency histograms, per-endpoint counters, watermarks</td><td>400-700</td></tr>
+<tr><td>Tracing</td><td>OpenTelemetry spans across API, indexing, blob and runtime operations</td><td>300-600</td></tr>
+<tr><td>Health/readiness</td><td>Runtime loaded, partition ownership, lease status, blob reachability</td><td>300-500</td></tr>
+<tr><td>Security middleware</td><td>JWT validation, scopes, tenant isolation, request size limits</td><td>500-900</td></tr>
+<tr><td>STS hardening</td><td>key rotation, JWKS, token exchange, service tokens, clock skew</td><td>700-1,200</td></tr>
+<tr><td>Input validation</td><td>schema hardening, dead-letter records, field limits, payload limits</td><td>500-900</td></tr>
+<tr><td>PII protection</td><td>event redaction, blocked fields, pseudonymous IDs, audit checks</td><td>400-800</td></tr>
+<tr><td>Audit logging</td><td>admin/rule/catalog changes, who/what/when, append-only audit stream</td><td>400-700</td></tr>
+<tr><td>Rate limiting</td><td>per-tenant/per-token quotas, ingress-friendly limiter</td><td>300-700</td></tr>
+<tr><td>Backpressure</td><td>queue depth, write throttling, model job throttling, 429/503 behavior</td><td>400-800</td></tr>
+<tr><td>Lease resilience</td><td>renew loop, lease-break handling, owner fencing, stale owner detection</td><td>500-900</td></tr>
+<tr><td>Replica repair</td><td>partial dual-write repair, replica lag metrics, replay verification</td><td>600-1,000</td></tr>
+<tr><td>Runtime safety</td><td>versioned page tokens, stale token handling, runtime rollback</td><td>400-800</td></tr>
+<tr><td>Performance optimization</td><td>packed indexes, cache warming, candidate caps, scratch buffers</td><td>800-1,500</td></tr>
+<tr><td>Load testing</td><td>mixed ingestion/search/recommend workloads</td><td>300-600</td></tr>
+<tr><td>Chaos/failure tests</td><td>lease loss, blob failure, replica lag, partition failover</td><td>400-800</td></tr>
+<tr><td>Admin operations</td><td>rebuild/failover controls, partition status, operation status</td><td>700-1,200</td></tr>
+<tr><td>Deployment hardening</td><td>AKS probes, PDBs, resource limits, HPA/KEDA, rollout strategy</td><td>300-600</td></tr>
+<tr><td>Runbooks</td><td>operational playbooks for failover, repair, rollback, tenant disable</td><td>300-600</td></tr>
+</tbody></table></div>
+<p>Production hardening subtotal:</p>
+<pre><code>8,100-15,900 LoC</code></pre>
+<h2 id="3-revised-implementation-size">3. Revised implementation size</h2>
+<div class="table-wrap"><table><thead><tr><th>Scope</th><th>Est. LoC</th></tr></thead><tbody>
+<tr><td>First useful implementation</td><td>4,800-7,700</td></tr>
+<tr><td>Core owned platform modules</td><td>7,700-11,950</td></tr>
+<tr><td>Production hardening</td><td>8,100-15,900</td></tr>
+<tr><td>Tests</td><td>+50-100% depending rigor</td></tr>
+</tbody></table></div>
+<p>Credible production MVP:</p>
+<pre><code>20k-35k LoC including tests</code></pre>
+<p>Fuller production-grade platform:</p>
+<pre><code>35k-55k LoC including tests, admin UI, runbooks and performance harnesses</code></pre>
+<h2 id="4-production-design-principles">4. Production design principles</h2>
+<pre><code>Fail closed for security.
+Fail visible for data quality.
+Fail retryable for blob/replica writes.
+Fail stale-but-safe for reads where allowed.
+Never silently drop events.
+Never mutate durable state outside indexing.
+Never trust tenant IDs from request paths without token validation.
+Never store durable data in containers.</code></pre>
+<h2 id="5-logging-design">5. Logging design</h2>
+<p>Logs must be structured JSON.</p>
+<p>Every log entry should include:</p>
+<ul>
+<li>timestamp</li>
+<li>level</li>
+<li>service role</li>
+<li>tenant ID</li>
+<li>request ID</li>
+<li>correlation ID</li>
+<li>partition ID where available</li>
+<li>partition map version where available</li>
+<li>runtime version where available</li>
+<li>operation ID where available</li>
+<li>error code where available</li>
+</ul>
+<p>Sensitive fields must be redacted before logging.</p>
+<p>Do not log:</p>
+<ul>
+<li>raw tokens</li>
+<li>raw PII</li>
+<li>full event payloads containing customer identifiers</li>
+<li>model prompts containing tenant-private data unless explicitly configured for</li>
+</ul>
+<p>secure audit</p>
+<h2 id="6-metrics-design">6. Metrics design</h2>
+<p>Expose metrics for:</p>
+<ul>
+<li>request count by endpoint/status</li>
+<li>p50/p95/p99 latency by endpoint</li>
+<li>cost approximation per 1,000 requests</li>
+<li>partition owner health</li>
+<li>blob lease renewals/failures</li>
+<li>append write latency</li>
+<li>replica commit latency</li>
+<li>replica lag</li>
+<li>tail marker validation failures</li>
+<li>runtime load time</li>
+<li>runtime memory by tenant/partition</li>
+<li>overlay size by tenant/partition</li>
+<li>model/enrichment job duration</li>
+<li>validation failures and dead-letter counts</li>
+</ul>
+<p>Start with <code>prometheus-client</code>; add OpenTelemetry only when traces are needed.</p>
+<h2 id="7-security-hardening">7. Security hardening</h2>
+<p>Required:</p>
+<ul>
+<li>JWT validation on every API except health probes</li>
+<li>tenant claim validation</li>
+<li>endpoint scope validation</li>
+<li>tenant/container binding</li>
+<li>request size limits</li>
+<li>per-tenant quotas</li>
+<li>admin action audit</li>
+<li>STS signing key rotation</li>
+<li>JWKS endpoint</li>
+<li>service-to-service token flow</li>
+<li>token clock-skew tolerance</li>
+<li>blocked-field PII checks for events</li>
+</ul>
+<p>Fail closed when identity, tenant or scope is ambiguous.</p>
+<h2 id="8-data-quality-hardening">8. Data quality hardening</h2>
+<p>The indexing endpoint must:</p>
+<ul>
+<li>validate schema</li>
+<li>enforce event type enums</li>
+<li>enforce payload size limits</li>
+<li>enforce product/variant ID rules</li>
+<li>derive or require <code>eventId</code></li>
+<li>validate attribution fields where needed</li>
+<li>write invalid records to a dead-letter append stream</li>
+<li>expose dead-letter metrics and admin views</li>
+</ul>
+<p>No accepted write should disappear silently.</p>
+<h2 id="9-runtime-safety">9. Runtime safety</h2>
+<p>Runtime responses must be version-aware.</p>
+<p>Required:</p>
+<ul>
+<li>runtime version in diagnostics/status</li>
+<li>page tokens bound to runtime version and request hash</li>
+<li>stale page token behavior</li>
+<li>runtime rollback support</li>
+<li>partition map version in routing/debug output</li>
+<li>old runtime retention window for pagination where feasible</li>
+</ul>
+<h2 id="10-blob-replica-write-resilience">10. Blob/replica write resilience</h2>
+<p>The indexing path must support:</p>
+<ul>
+<li>retries with bounded backoff</li>
+<li>idempotent <code>recordId</code></li>
+<li>deterministic <code>segmentId</code></li>
+<li>deterministic <code>sequence</code></li>
+<li>lease fencing</li>
+<li>partial replica repair</li>
+<li>per-replica watermarks</li>
+<li>tail marker verification</li>
+<li>operation status for queued commits</li>
+</ul>
+<p>Partial writes are recoverable. They are not considered successful until the</p>
+<p>configured commit policy is satisfied.</p>
+<h2 id="11-performance-optimization-priorities">11. Performance optimization priorities</h2>
+<ol>
+<li>Keep hot path in memory.</li>
+<li>Avoid per-request model calls.</li>
+<li>Bound candidate counts before reranking.</li>
+<li>Use packed arrays, bitmaps and vector buffers.</li>
+<li>Keep overlays bounded.</li>
+<li>Cache query plans and popular query results.</li>
+<li>Pre-warm runtime partitions before routing traffic.</li>
+<li>Track p95/p99 latency per endpoint and partition.</li>
+<li>Track cost per 1,000 requests.</li>
+<li>Use external services only when justified.</li>
+</ol>
+<h2 id="12-load-and-chaos-testing">12. Load and chaos testing</h2>
+<p>Minimum load scenarios:</p>
+<ul>
+<li>search-only traffic</li>
+<li>recommendation-only traffic</li>
+<li>autocomplete-only traffic</li>
+<li>mixed search/recommend/events</li>
+<li>high-volume event ingestion</li>
+<li>inventory update burst</li>
+<li>catalog delta burst</li>
+<li>partition rebalance during traffic</li>
+<li>dual-write replica lag</li>
+</ul>
+<p>Failure scenarios:</p>
+<ul>
+<li>blob append failure</li>
+<li>secondary replica lag</li>
+<li>lease renewal failure</li>
+<li>partition owner death</li>
+<li>region failover</li>
+<li>stale manifest</li>
+<li>corrupt tail marker</li>
+<li>runtime load failure</li>
+</ul>
+<h2 id="13-aks-hardening">13. AKS hardening</h2>
+<p>Required:</p>
+<ul>
+<li>readiness probe checks runtime and partition ownership</li>
+<li>liveness probe checks process health only</li>
+<li>resource requests/limits</li>
+<li>PodDisruptionBudgets for serving/indexing</li>
+<li>graceful shutdown/drain for partition owners</li>
+<li>HPA for read-serving roles</li>
+<li>KEDA or Jobs for builder/model workloads where needed</li>
+<li>zero-downtime rollout for read-serving roles</li>
+<li>explicit singleton/partition ownership for indexing roles</li>
+</ul>
+<h2 id="14-runbooks">14. Runbooks</h2>
+<p>Runbooks must cover:</p>
+<ul>
+<li>tenant disable</li>
+<li>partition failover</li>
+<li>lease break</li>
+<li>replica repair</li>
+<li>runtime rollback</li>
+<li>bad catalog import</li>
+<li>bad rules publish</li>
+<li>event replay</li>
+<li>model/enrichment rollback</li>
+<li>storage account failover</li>
+<li>regional failover</li>
+</ul></article></div></section><section class="panel" data-panel="core-specification"><div class="panelgrid"><aside class="tocbox"><strong>On this tab</strong><a class="toc l2" href="#1-purpose">1. Purpose</a><a class="toc l2" href="#2-goals">2. Goals</a><a class="toc l2" href="#3-non-goals-for-the-first-implementation">3. Non-goals for the first implementation</a><a class="toc l2" href="#4-top-level-catalog-snapshot">4. Top-level catalog snapshot</a><a class="toc l2" href="#5-shared-ingestion-model">5. Shared ingestion model</a><a class="toc l2" href="#6-product-model">6. Product model</a><a class="toc l3" href="#6-1-product-types">6.1 Product types</a><a class="toc l3" href="#6-2-primary-products">6.2 Primary products</a><a class="toc l3" href="#6-3-variant-products">6.3 Variant products</a><a class="toc l3" href="#6-4-collection-products">6.4 Collection products</a><a class="toc l2" href="#7-commerce-product-compatibility">7. Commerce product compatibility</a><a class="toc l2" href="#8-attribute-model">8. Attribute model</a><a class="toc l2" href="#9-inventory-model">9. Inventory model</a><a class="toc l2" href="#10-user-event-model">10. User event model</a><a class="toc l2" href="#11-ingestion-and-etl">11. Ingestion and ETL</a><a class="toc l2" href="#12-materialized-runtime">12. Materialized runtime</a><a class="toc l2" href="#13-retrieval-and-ranking">13. Retrieval and ranking</a><a class="toc l2" href="#14-search-capability">14. Search capability</a><a class="toc l2" href="#15-recommendations-capability">15. Recommendations capability</a><a class="toc l3" href="#15-1-curated-recommendation-models">15.1 Curated recommendation models</a><a class="toc l3" href="#15-2-touchpoint-coverage">15.2 Touchpoint coverage</a><a class="toc l3" href="#15-3-cross-sell-and-upsell">15.3 Cross-sell and upsell</a><a class="toc l3" href="#15-4-frictionless-fallback-experience">15.4 Frictionless fallback experience</a><a class="toc l3" href="#15-5-search-based-recommendations">15.5 Search-based recommendations</a><a class="toc l3" href="#15-6-real-time-predictions">15.6 Real-time predictions</a><a class="toc l2" href="#16-cold-start-handling">16. Cold-start handling</a><a class="toc l2" href="#17-predictive-autocomplete">17. Predictive autocomplete</a><a class="toc l2" href="#18-query-understanding-and-conversational-refinement">18. Query understanding and conversational refinement</a><a class="toc l2" href="#19-real-time-personalization-and-shopper-personas">19. Real-time personalization and shopper personas</a><a class="toc l2" href="#20-merchandising-controls">20. Merchandising controls</a><a class="toc l2" href="#21-serving-configs-and-kpis">21. Serving configs and KPIs</a><a class="toc l2" href="#22-catalog-enrichment">22. Catalog enrichment</a><a class="toc l2" href="#23-product-api-surface">23. Product API surface</a><a class="toc l2" href="#24-serving-api-surface">24. Serving API surface</a><a class="toc l2" href="#25-safety-privacy-and-responsibility">25. Safety, privacy and responsibility</a><a class="toc l2" href="#26-composable-commerce-architecture">26. Composable commerce architecture</a><a class="toc l2" href="#27-evaluation-and-testing">27. Evaluation and testing</a><a class="toc l2" href="#28-migration-roadmap">28. Migration roadmap</a><a class="toc l2" href="#29-completion-criteria">29. Completion criteria</a></aside><article class="content"><h1 id="retail-search-v2-specification">Retail Search V2 Specification</h1>
 <h2 id="1-purpose">1. Purpose</h2>
 <p>Retail Search V2 is a vendor-neutral commerce search and recommendations engine</p>
 <p>designed to load catalog, inventory and user-event data from storage blobs,</p>
