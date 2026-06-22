@@ -13,7 +13,8 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN git clone --depth 1 --branch picowal-c-api https://github.com/WillEastbury/picowal.git /deps/picowal \
+RUN rm -rf /deps/picowal /deps/picowal.retailprimitives /deps/picoweb /deps/BareMetalJsTools /deps/picoscript \
+    && git clone --depth 1 --branch picowal-c-api https://github.com/WillEastbury/picowal.git /deps/picowal \
     && git clone --depth 1 https://github.com/WillEastbury/picowal.retailprimitives.git /deps/picowal.retailprimitives \
     && git clone --depth 1 https://github.com/WillEastbury/picoweb.git /deps/picoweb \
     && git clone --depth 1 https://github.com/WillEastbury/BareMetalJsTools.git /deps/BareMetalJsTools \
