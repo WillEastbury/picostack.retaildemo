@@ -1,0 +1,718 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.wavefunctionlabs.com/retail/v2/catalog.schema.json",
+  "title": "Retail Search V2 Catalog Snapshot",
+  "type": "object",
+  "required": ["metadata", "products"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["schemaVersion", "currencyCode"],
+      "additionalProperties": true,
+      "properties": {
+        "catalogId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "catalogVersion": { "type": "string" },
+        "currencyCode": { "type": "string", "minLength": 3, "maxLength": 3 }
+      }
+    },
+    "products": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/product" }
+    },
+    "enrichment": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true,
+      "properties": {
+        "pipelines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/enrichmentPipeline" }
+        }
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/inventoryRecord" }
+    },
+    "events": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "rules": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "servingConfigs": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/servingConfig" }
+    },
+    "questionFlows": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/questionFlow" }
+    },
+    "personalization": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true,
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/segment" }
+        },
+        "objectives": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/objective" }
+        }
+      }
+    },
+    "queryUnderstanding": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true,
+      "properties": {
+        "model": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "provider": { "type": "string" },
+            "name": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "intentTypes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "kpis": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/kpi" }
+    },
+    "migration": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true,
+      "properties": {
+        "pipelines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pipeline" }
+        },
+        "ruleInventory": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ruleInventoryItem" }
+        },
+        "milestones": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/milestone" }
+        }
+      }
+    },
+    "synonyms": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["terms"],
+        "additionalProperties": false,
+        "properties": {
+          "terms": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "product": {
+      "type": "object",
+      "required": ["id", "type", "title"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["TYPE_UNSPECIFIED", "PRIMARY", "VARIANT", "COLLECTION"],
+          "default": "PRIMARY"
+        },
+        "primaryProductId": { "type": ["string", "null"] },
+        "collectionMemberIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "gtin": { "type": "string" },
+        "variantAttributes": {
+          "type": "array",
+          "description": "Attribute names that distinguish variants, such as color, size, material, fit or pack size.",
+          "items": { "type": "string" }
+        },
+        "inheritedFromPrimary": {
+          "type": "array",
+          "description": "Fields inherited from the primary product during materialization.",
+          "items": { "type": "string" }
+        },
+        "searchGridEligible": {
+          "type": "boolean",
+          "description": "Whether this product can be shown directly as a search/browse grid result."
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "categories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "brands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "uri": { "type": "string" },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "uri": { "type": "string" },
+              "height": { "type": "integer" },
+              "width": { "type": "integer" }
+            }
+          }
+        },
+        "priceInfo": { "$ref": "#/$defs/priceInfo" },
+        "rating": { "$ref": "#/$defs/rating" },
+        "ttl": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/duration" }
+          ]
+        },
+        "availableTime": { "type": "string" },
+        "availability": {
+          "type": "string",
+          "enum": ["AVAILABILITY_UNSPECIFIED", "IN_STOCK", "OUT_OF_STOCK", "PREORDER", "BACKORDER"],
+          "default": "IN_STOCK"
+        },
+        "availableQuantity": { "type": "integer", "minimum": 0 },
+        "fulfillmentInfo": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fulfillmentInfo" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/attributeValue" }
+        },
+        "audience": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "genders": { "type": "array", "items": { "type": "string" } },
+            "ageGroups": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "colorInfo": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "colorFamilies": { "type": "array", "items": { "type": "string" } },
+            "colors": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "sizes": { "type": "array", "items": { "type": "string" } },
+        "materials": { "type": "array", "items": { "type": "string" } },
+        "patterns": { "type": "array", "items": { "type": "string" } },
+        "conditions": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "publishTime": { "type": "string" },
+        "expireTime": { "type": ["string", "null"] },
+        "promotions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/promotion" }
+        },
+        "variants": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/product" }
+        },
+        "localInventories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/localInventory" }
+        },
+        "enrichment": { "$ref": "#/$defs/productEnrichment" },
+        "retrievableFields": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        }
+      }
+    },
+    "priceInfo": {
+      "type": "object",
+      "required": ["currencyCode", "price"],
+      "additionalProperties": true,
+      "properties": {
+        "currencyCode": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "price": { "type": "number", "minimum": 0 },
+        "originalPrice": { "type": "number", "minimum": 0 },
+        "cost": { "type": "number", "minimum": 0 },
+        "priceEffectiveTime": { "type": "string" },
+        "priceExpireTime": { "type": ["string", "null"] },
+        "priceRange": { "$ref": "#/$defs/priceRange" }
+      }
+    },
+    "priceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "price": { "$ref": "#/$defs/interval" },
+        "originalPrice": { "$ref": "#/$defs/interval" }
+      }
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" }
+      }
+    },
+    "rating": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ratingCount": { "type": "integer", "minimum": 0 },
+        "averageRating": { "type": "number", "minimum": 0 },
+        "ratingHistogram": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seconds": { "type": "integer" },
+        "nanos": { "type": "integer" }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "promotionId": { "type": "string" }
+      }
+    },
+    "fulfillmentInfo": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "placeIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attributeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "array", "items": { "type": "string" } },
+        "numbers": { "type": "array", "items": { "type": "number" } },
+        "booleanValues": { "type": "array", "items": { "type": "boolean" } },
+        "searchable": { "type": "boolean" },
+        "indexable": { "type": "boolean" }
+      }
+    },
+    "confidenceTextValue": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "text": { "type": "array", "items": { "type": "string" } },
+        "numbers": { "type": "array", "items": { "type": "number" } },
+        "booleanValues": { "type": "array", "items": { "type": "boolean" } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source": { "type": "string" }
+      }
+    },
+    "productEnrichment": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "version": { "type": "string" },
+        "generatedTime": { "type": "string" },
+        "taxonomy": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "normalizedCategories": { "type": "array", "items": { "type": "string" } },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "source": { "type": "string" }
+          }
+        },
+        "derivedAttributes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/confidenceTextValue" }
+        },
+        "imageTags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "tag": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "source": { "type": "string" }
+            }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "issues": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/qualityIssue" }
+            }
+          }
+        }
+      }
+    },
+    "qualityIssue": {
+      "type": "object",
+      "required": ["code"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+        "message": { "type": "string" },
+        "field": { "type": "string" }
+      }
+    },
+    "enrichmentPipeline": {
+      "type": "object",
+      "required": ["id", "component"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "component": {
+          "type": "string",
+          "enum": [
+            "taxonomy_classifier",
+            "attribute_extractor",
+            "color_normalizer",
+            "size_normalizer",
+            "material_pattern_extractor",
+            "title_cleaner",
+            "description_summarizer",
+            "image_tagger",
+            "duplicate_detector",
+            "compatibility_extractor",
+            "quality_scorer",
+            "searchability_scorer"
+          ]
+        },
+        "provider": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "localInventory": {
+      "type": "object",
+      "required": ["placeId"],
+      "additionalProperties": true,
+      "properties": {
+        "placeId": { "type": "string" },
+        "priceInfo": { "$ref": "#/$defs/priceInfo" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/attributeValue" }
+        },
+        "fulfillmentTypes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "inventoryRecord": {
+      "type": "object",
+      "required": ["productId"],
+      "additionalProperties": true,
+      "properties": {
+        "productId": { "type": "string" },
+        "placeId": { "type": "string" },
+        "priceInfo": { "$ref": "#/$defs/priceInfo" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/attributeValue" }
+        },
+        "availableQuantity": { "type": "integer", "minimum": 0 },
+        "availability": { "type": "string" },
+        "fulfillmentTypes": { "type": "array", "items": { "type": "string" } },
+        "updateTime": { "type": "string" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["eventType", "eventTime"],
+      "additionalProperties": true,
+      "properties": {
+        "eventId": { "type": "string" },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "search",
+            "browse",
+            "category-page-view",
+            "detail-page-view",
+            "product-view",
+            "click",
+            "add-to-cart",
+            "purchase",
+            "refund",
+            "return"
+            ,"recommendation-impression",
+            "autocomplete-select",
+            "question-answer"
+          ]
+        },
+        "visitorId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "attributionToken": { "type": "string" },
+        "placement": { "type": "string" },
+        "servingConfigId": { "type": "string" },
+        "channel": { "type": "string" },
+        "userId": { "type": ["string", "null"] },
+        "pageCategories": { "type": "array", "items": { "type": "string" } },
+        "query": { "type": "string" },
+        "productIds": { "type": "array", "items": { "type": "string" } },
+        "productDetails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "productId": { "type": "string" },
+              "primaryProductId": { "type": "string" },
+              "position": { "type": "integer", "minimum": 0 },
+              "quantity": { "type": "integer", "minimum": 0 },
+              "price": { "type": "number", "minimum": 0 },
+              "currencyCode": { "type": "string" }
+            }
+          }
+        },
+        "transactionInfo": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "transactionId": { "type": "string" },
+            "value": { "type": "number", "minimum": 0 },
+            "currencyCode": { "type": "string" },
+            "tax": { "type": "number", "minimum": 0 },
+            "shipping": { "type": "number", "minimum": 0 }
+          }
+        },
+        "questionFlowId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "answer": { "type": "string" },
+        "writesPreference": { "type": "string" },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "eventTime": { "type": "string" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["id", "placement", "actions"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "placement": { "type": "string" },
+        "condition": { "type": "object" },
+        "actions": { "type": "object" }
+      }
+    },
+    "servingConfig": {
+      "type": "object",
+      "required": ["id", "placement", "objective"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "placement": { "type": "string" },
+        "objective": {
+          "type": "string",
+          "enum": ["conversion", "revenue", "ctr", "margin", "stock_clearance", "balanced"]
+        },
+        "ranking": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "lexicalWeight": { "type": "number" },
+            "semanticWeight": { "type": "number" },
+            "personalizationWeight": { "type": "number" },
+            "businessRulesWeight": { "type": "number" },
+            "freshnessWeight": { "type": "number" },
+            "availabilityWeight": { "type": "number" }
+          }
+        },
+        "ruleIds": { "type": "array", "items": { "type": "string" } },
+        "questionFlowId": { "type": "string" }
+      }
+    },
+    "questionFlow": {
+      "type": "object",
+      "required": ["id", "questions"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "trigger": { "type": "object" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "text"],
+            "additionalProperties": true,
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "type": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "writesPreference": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "affinities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          }
+        }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["conversion", "revenue", "ctr", "margin", "stock_clearance", "balanced"]
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "required": ["id", "metric"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "placement": { "type": "string" },
+        "metric": {
+          "type": "string",
+          "enum": [
+            "revenue_per_search",
+            "ctr",
+            "conversion_rate",
+            "add_to_cart_rate",
+            "revenue_per_session",
+            "margin_per_session",
+            "zero_result_rate",
+            "stock_clearance"
+          ]
+        },
+        "target": { "type": "number" },
+        "guardrails": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "ruleInventoryItem": {
+      "type": "object",
+      "required": ["id", "status"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["essential", "retire", "experimental", "ai_replaced"]
+        },
+        "reason": { "type": "string" }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "required": ["id", "domain", "mode"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "domain": {
+          "type": "string",
+          "enum": ["catalog", "inventory", "user_events"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["bulk", "real_time"]
+        },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in_progress", "tested", "production"]
+        },
+        "robustness": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "idempotent": { "type": "boolean" },
+            "checkpointed": { "type": "boolean" },
+            "deadLetterQueue": { "type": "boolean" },
+            "replayable": { "type": "boolean" },
+            "loadTested": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "targetDate": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in_progress", "done", "blocked"]
+        }
+      }
+    }
+  }
+}

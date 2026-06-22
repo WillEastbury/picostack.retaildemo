@@ -1,0 +1,573 @@
+{
+  "metadata": {
+    "catalogId": "default_catalog",
+    "branchId": "default_branch",
+    "schemaVersion": 1,
+    "catalogVersion": "2026-06-22T12:00:00Z",
+    "currencyCode": "GBP"
+  },
+  "enrichment": {
+    "pipelines": [
+      {
+        "id": "taxonomy-v1",
+        "component": "taxonomy_classifier",
+        "provider": "rules-and-embeddings",
+        "version": "2026.06"
+      },
+      {
+        "id": "quality-v1",
+        "component": "quality_scorer",
+        "provider": "deterministic-rules",
+        "version": "2026.06"
+      }
+    ]
+  },
+  "products": [
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-001",
+      "id": "SKU-001",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-001",
+      "collectionMemberIds": [],
+      "gtin": "05012345678901",
+      "searchGridEligible": true,
+      "variantAttributes": ["size", "color"],
+      "title": "Aurora Storm Shell Jacket",
+      "description": "Breathable waterproof shell with taped seams and a packable hood.",
+      "languageCode": "en-GB",
+      "categories": ["Outdoor > Clothing > Jackets", "Outdoor > Hiking"],
+      "brands": ["Contoso Trail"],
+      "uri": "https://store.example/products/SKU-001",
+      "images": [
+        {
+          "uri": "https://store.example/images/SKU-001.jpg",
+          "height": 1200,
+          "width": 1200
+        }
+      ],
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 129.99,
+        "originalPrice": 169.99,
+        "cost": 72.5,
+        "priceEffectiveTime": "2026-06-01T00:00:00Z",
+        "priceExpireTime": null,
+        "priceRange": {
+          "price": {
+            "minimum": 129.99,
+            "maximum": 149.99
+          },
+          "originalPrice": {
+            "minimum": 169.99,
+            "maximum": 189.99
+          }
+        }
+      },
+      "rating": {
+        "ratingCount": 128,
+        "averageRating": 4.7,
+        "ratingHistogram": [2, 3, 8, 32, 83]
+      },
+      "ttl": "2592000s",
+      "availableTime": "2026-06-01T00:00:00Z",
+      "availability": "IN_STOCK",
+      "availableQuantity": 142,
+      "fulfillmentInfo": [
+        {
+          "type": "ship-to-home",
+          "placeIds": ["warehouse-uk-1"]
+        },
+        {
+          "type": "pickup-in-store",
+          "placeIds": ["store-keswick", "store-ambleside"]
+        }
+      ],
+      "attributes": {
+        "color": { "text": ["ember rose"], "searchable": true, "indexable": true },
+        "size": { "text": ["S", "M", "L"], "searchable": false, "indexable": true },
+        "gender": { "text": ["unisex"], "searchable": false, "indexable": true },
+        "material": { "text": ["recycled nylon"], "searchable": true, "indexable": true },
+        "rating": { "numbers": [4.7], "searchable": false, "indexable": true },
+        "marginBand": { "text": ["high"], "searchable": false, "indexable": true },
+        "waterproof": { "booleanValues": [true], "searchable": false, "indexable": true }
+      },
+      "audience": {
+        "genders": ["unisex"],
+        "ageGroups": ["adult"]
+      },
+      "colorInfo": {
+        "colorFamilies": ["red"],
+        "colors": ["ember rose"]
+      },
+      "sizes": ["S", "M", "L"],
+      "materials": ["recycled nylon"],
+      "patterns": ["solid"],
+      "conditions": ["new"],
+      "tags": ["waterproof", "hiking", "rain"],
+      "enrichment": {
+        "version": "2026.06.enrich-v1",
+        "generatedTime": "2026-06-22T12:00:00Z",
+        "taxonomy": {
+          "normalizedCategories": ["Outdoor > Clothing > Jackets", "Outdoor > Hiking"],
+          "confidence": 0.94,
+          "source": "taxonomy-v1"
+        },
+        "derivedAttributes": {
+          "activity": { "text": ["hiking"], "confidence": 0.88, "source": "attribute-extractor" },
+          "weather": { "text": ["rain"], "confidence": 0.91, "source": "attribute-extractor" }
+        },
+        "imageTags": [
+          {
+            "tag": "hooded jacket",
+            "confidence": 0.82,
+            "source": "image-tagger"
+          }
+        ],
+        "quality": {
+          "score": 0.92,
+          "issues": []
+        }
+      },
+      "publishTime": "2026-06-01T00:00:00Z",
+      "expireTime": null,
+      "promotions": [
+        {
+          "promotionId": "summer-trail-2026"
+        }
+      ],
+      "variants": [
+        {
+          "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-001-M-ROSE",
+          "id": "SKU-001-M-ROSE",
+          "type": "VARIANT",
+          "primaryProductId": "SKU-001",
+          "gtin": "05012345678918",
+          "searchGridEligible": false,
+          "inheritedFromPrimary": ["description", "categories", "brands", "images", "uri"],
+          "title": "Aurora Storm Shell Jacket - M / Ember Rose",
+          "description": "Breathable waterproof shell with taped seams and a packable hood.",
+          "languageCode": "en-GB",
+          "priceInfo": {
+            "currencyCode": "GBP",
+            "price": 129.99
+          },
+          "availability": "IN_STOCK",
+          "availableQuantity": 18,
+          "attributes": {
+            "size": { "text": ["M"] },
+            "color": { "text": ["ember rose"] }
+          },
+          "sizes": ["M"],
+          "conditions": ["new"]
+        }
+      ],
+      "localInventories": [
+        {
+          "placeId": "store-keswick",
+          "priceInfo": {
+            "currencyCode": "GBP",
+            "price": 124.99,
+            "originalPrice": 169.99
+          },
+          "attributes": {
+            "aisle": { "text": ["outdoor-2"], "indexable": true },
+            "displayPriority": { "numbers": [1], "indexable": true }
+          },
+          "fulfillmentTypes": ["pickup-in-store", "same-day-delivery"]
+        }
+      ],
+      "retrievableFields": [
+        "id",
+        "title",
+        "description",
+        "categories",
+        "brands",
+        "priceInfo",
+        "availability",
+        "attributes",
+        "images",
+        "uri"
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-002",
+      "id": "SKU-002",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-002",
+      "gtin": "05098765432101",
+      "searchGridEligible": true,
+      "title": "Cold Brew Coffee Cans",
+      "description": "Four pack of smooth unsweetened cold brew coffee.",
+      "languageCode": "en-GB",
+      "categories": ["Grocery > Drinks > Coffee"],
+      "brands": ["Litware Roasters"],
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 6.5
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 260,
+      "rating": {
+        "ratingCount": 54,
+        "averageRating": 4.5,
+        "ratingHistogram": [1, 1, 4, 14, 34]
+      },
+      "availableTime": "2026-06-10T00:00:00Z",
+      "attributes": {
+        "diet": { "text": ["vegan"], "searchable": true, "indexable": true },
+        "caffeine": { "booleanValues": [true], "searchable": false, "indexable": true },
+        "rating": { "numbers": [4.5], "searchable": false, "indexable": true }
+      },
+      "enrichment": {
+        "version": "2026.06.enrich-v1",
+        "generatedTime": "2026-06-22T12:00:00Z",
+        "taxonomy": {
+          "normalizedCategories": ["Grocery > Drinks > Coffee"],
+          "confidence": 0.97,
+          "source": "taxonomy-v1"
+        },
+        "derivedAttributes": {
+          "diet": { "text": ["vegan"], "confidence": 0.99, "source": "merchant-attribute" },
+          "packSize": { "text": ["4 pack"], "confidence": 0.96, "source": "attribute-extractor" }
+        },
+        "quality": {
+          "score": 0.87,
+          "issues": [
+            {
+              "code": "missing_image",
+              "severity": "warning",
+              "message": "Product has no image in the sample feed.",
+              "field": "images"
+            }
+          ]
+        }
+      },
+      "sizes": ["4 pack"],
+      "materials": ["aluminium can"],
+      "conditions": ["new"],
+      "tags": ["coffee", "cold brew", "drinks"]
+    }
+  ],
+  "inventory": [
+    {
+      "productId": "SKU-001-M-ROSE",
+      "placeId": "store-keswick",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 124.99,
+        "originalPrice": 169.99
+      },
+      "attributes": {
+        "aisle": { "text": ["outdoor-2"], "indexable": true },
+        "displayPriority": { "numbers": [1], "indexable": true }
+      },
+      "availableQuantity": 6,
+      "availability": "IN_STOCK",
+      "fulfillmentTypes": ["pickup-in-store", "ship-to-home"],
+      "updateTime": "2026-06-22T11:00:00Z"
+    }
+  ],
+  "events": [
+    {
+      "eventId": "evt-001",
+      "eventType": "search",
+      "visitorId": "visitor-123",
+      "sessionId": "session-abc",
+      "attributionToken": "attr-search-001",
+      "placement": "search",
+      "servingConfigId": "default-search",
+      "channel": "web",
+      "query": "waterproof jacket",
+      "pageCategories": ["Outdoor > Clothing > Jackets"],
+      "productIds": ["SKU-001"],
+      "productDetails": [
+        {
+          "productId": "SKU-001",
+          "primaryProductId": "SKU-001",
+          "position": 1
+        }
+      ],
+      "eventTime": "2026-06-22T11:01:00Z"
+    },
+    {
+      "eventId": "evt-002",
+      "eventType": "add-to-cart",
+      "visitorId": "visitor-123",
+      "sessionId": "session-abc",
+      "attributionToken": "attr-search-001",
+      "placement": "search",
+      "servingConfigId": "default-search",
+      "channel": "web",
+      "productIds": ["SKU-001-M-ROSE"],
+      "productDetails": [
+        {
+          "productId": "SKU-001-M-ROSE",
+          "primaryProductId": "SKU-001",
+          "quantity": 1,
+          "price": 129.99,
+          "currencyCode": "GBP"
+        }
+      ],
+      "eventTime": "2026-06-22T11:03:00Z"
+    },
+    {
+      "eventId": "evt-003",
+      "eventType": "purchase",
+      "visitorId": "visitor-123",
+      "sessionId": "session-abc",
+      "attributionToken": "attr-search-001",
+      "placement": "checkout",
+      "servingConfigId": "checkout-cross-sell",
+      "channel": "web",
+      "productIds": ["SKU-001-M-ROSE"],
+      "transactionInfo": {
+        "transactionId": "order-1001",
+        "value": 129.99,
+        "currencyCode": "GBP",
+        "tax": 0,
+        "shipping": 0
+      },
+      "productDetails": [
+        {
+          "productId": "SKU-001-M-ROSE",
+          "primaryProductId": "SKU-001",
+          "quantity": 1,
+          "price": 129.99,
+          "currencyCode": "GBP"
+        }
+      ],
+      "eventTime": "2026-06-22T11:10:00Z"
+    }
+  ],
+  "rules": [
+    {
+      "id": "boost-waterproof-contoso",
+      "placement": "search",
+      "condition": {
+        "queryContains": ["waterproof"],
+        "category": "Outdoor > Clothing > Jackets"
+      },
+      "actions": {
+        "boost": [
+          {
+            "field": "brands",
+            "value": "Contoso Trail",
+            "weight": 1.4
+          }
+        ],
+        "bury": [
+          {
+            "field": "availability",
+            "value": "OUT_OF_STOCK",
+            "weight": 0.2
+          }
+        ],
+        "pin": [
+          {
+            "productId": "SKU-001",
+            "position": 1
+          }
+        ]
+      }
+    }
+  ],
+  "servingConfigs": [
+    {
+      "id": "default-search",
+      "placement": "search",
+      "objective": "revenue",
+      "ranking": {
+        "lexicalWeight": 1.0,
+        "semanticWeight": 0.35,
+        "personalizationWeight": 0.45,
+        "businessRulesWeight": 0.4,
+        "availabilityWeight": 0.25
+      },
+      "ruleIds": ["boost-waterproof-contoso"],
+      "questionFlowId": "outdoor-clarifier"
+    },
+    {
+      "id": "also-bought",
+      "placement": "recommend",
+      "objective": "conversion",
+      "ranking": {
+        "personalizationWeight": 0.6,
+        "businessRulesWeight": 0.2,
+        "availabilityWeight": 0.2
+      },
+      "ruleIds": []
+    }
+  ],
+  "questionFlows": [
+    {
+      "id": "outdoor-clarifier",
+      "trigger": {
+        "queryContainsAny": ["jacket", "boots", "waterproof"],
+        "lowConfidenceBelow": 0.55
+      },
+      "questions": [
+        {
+          "id": "activity",
+          "text": "What are you using it for?",
+          "type": "single_select",
+          "options": ["hiking", "running", "commuting", "camping"],
+          "writesPreference": "activity"
+        },
+        {
+          "id": "weather",
+          "text": "What weather do you need it for?",
+          "type": "single_select",
+          "options": ["heavy rain", "cold", "wind", "mixed conditions"],
+          "writesPreference": "weather"
+        }
+      ]
+    }
+  ],
+  "personalization": {
+    "segments": [
+      {
+        "id": "outdoor-enthusiast",
+        "description": "Visitor has repeated outdoor category interactions.",
+        "affinities": {
+          "categories": {
+            "Outdoor > Clothing > Jackets": 0.9,
+            "Outdoor > Hiking": 0.8
+          },
+          "brands": {
+            "Contoso Trail": 0.7
+          }
+        }
+      }
+    ],
+    "objectives": [
+      {
+        "id": "maximize-revenue",
+        "type": "revenue",
+        "weights": {
+          "conversion": 0.35,
+          "margin": 0.25,
+          "price": 0.15,
+          "availability": 0.25
+        }
+      }
+    ]
+  },
+  "queryUnderstanding": {
+    "model": {
+      "provider": "oss",
+      "name": "commerce-query-understanding",
+      "version": "v0"
+    },
+    "intentTypes": ["product_search", "category_browse", "compatibility_question", "recommendation_request"],
+    "entityTypes": ["category", "brand", "attribute", "activity", "weather", "price_band"]
+  },
+  "kpis": [
+    {
+      "id": "search-revenue",
+      "placement": "search",
+      "metric": "revenue_per_search",
+      "target": 4.25,
+      "guardrails": ["p95_latency_ms", "zero_result_rate", "conversion_rate"]
+    },
+    {
+      "id": "recommend-conversion",
+      "placement": "recommend",
+      "metric": "conversion_rate",
+      "target": 0.08,
+      "guardrails": ["availability_rate", "diversity"]
+    }
+  ],
+  "migration": {
+    "pipelines": [
+      {
+        "id": "catalog-bulk-import",
+        "domain": "catalog",
+        "mode": "bulk",
+        "source": "merchant-product-feed",
+        "target": "V2.products",
+        "status": "planned",
+        "robustness": {
+          "idempotent": true,
+          "checkpointed": true,
+          "deadLetterQueue": true,
+          "replayable": true,
+          "loadTested": false
+        }
+      },
+      {
+        "id": "inventory-realtime",
+        "domain": "inventory",
+        "mode": "real_time",
+        "source": "order-management-system",
+        "target": "V2.inventory",
+        "status": "planned",
+        "robustness": {
+          "idempotent": true,
+          "checkpointed": true,
+          "deadLetterQueue": true,
+          "replayable": true,
+          "loadTested": false
+        }
+      },
+      {
+        "id": "events-realtime",
+        "domain": "user_events",
+        "mode": "real_time",
+        "source": "web-mobile-kiosk-events",
+        "target": "V2.events",
+        "status": "planned",
+        "robustness": {
+          "idempotent": true,
+          "checkpointed": true,
+          "deadLetterQueue": true,
+          "replayable": true,
+          "loadTested": false
+        }
+      }
+    ],
+    "ruleInventory": [
+      {
+        "id": "boost-waterproof-contoso",
+        "source": "legacy-merchandising",
+        "status": "experimental",
+        "reason": "Promotion candidate; can be A/B tested against AI ranking."
+      },
+      {
+        "id": "bury-out-of-stock",
+        "source": "operational",
+        "status": "essential",
+        "reason": "Availability guardrail; do not show unavailable products early."
+      }
+    ],
+    "milestones": [
+      {
+        "id": "data-audit",
+        "title": "Audit catalog, inventory and user event feeds",
+        "status": "planned"
+      },
+      {
+        "id": "baseline-runtime",
+        "title": "Build shared search and recommendation runtime from one snapshot",
+        "status": "planned"
+      },
+      {
+        "id": "event-learning",
+        "title": "Use search, click, add-to-cart and purchase events in ranking",
+        "status": "planned"
+      },
+      {
+        "id": "staging-e2e",
+        "title": "Complete staging end-to-end search and recommendation functional test",
+        "status": "planned"
+      }
+    ]
+  },
+  "synonyms": [
+    {
+      "terms": ["waterproof", "rainproof", "weatherproof"]
+    },
+    {
+      "terms": ["trainers", "sneakers", "running shoes"]
+    }
+  ]
+}
