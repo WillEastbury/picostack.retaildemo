@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import csv
 import io
 import json
@@ -91,21 +92,21 @@ def create_app(library: Path | None = None, store: Path | None = None, seed: boo
     async def product_service_post(payload: dict[str, Any]) -> dict[str, Any]:
         products = payload.get("products") if isinstance(payload, dict) else None
         if isinstance(products, list):
-            return sync_products(products)
-        return sync_products([payload])
+            return await asyncio.to_thread(sync_products, products)
+        return await asyncio.to_thread(sync_products, [payload])
 
     @app.post("/api/product-service/products:sync")
     async def product_service_sync(payload: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         products = payload if isinstance(payload, list) else payload.get("products", [])
         if not isinstance(products, list):
             return {"synced": 0, "errors": [{"index": -1, "error": "products must be a list"}], "persisted": False}
-        return sync_products(products)
+        return await asyncio.to_thread(sync_products, products)
 
     @app.post("/api/product-service/products:generate")
     async def product_service_generate(payload: dict[str, Any]) -> dict[str, Any]:
         count = max(1, min(8000, int(payload.get("count") or 5000)))
         seed_value = int(payload.get("seed") or 42)
-        return sync_products(generated_products(count, seed_value)) | {"generated": count, "seed": seed_value}
+        return await asyncio.to_thread(sync_products, generated_products(count, seed_value)) | {"generated": count, "seed": seed_value}
 
     @app.post("/api/product-service/products:upload")
     async def product_service_upload(file: UploadFile = File(...)) -> dict[str, Any]:
@@ -117,7 +118,7 @@ def create_app(library: Path | None = None, store: Path | None = None, seed: boo
         else:
             payload = json.loads(data.decode("utf-8"))
             products = payload if isinstance(payload, list) else payload.get("products", [])
-        return sync_products(products)
+        return await asyncio.to_thread(sync_products, products)
 
     @app.websocket("/ws/browser-voice")
     async def browser_voice(websocket: WebSocket) -> None:
