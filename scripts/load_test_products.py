@@ -93,20 +93,21 @@ async def upload_csv(session: aiohttp.ClientSession, url: str, count: int) -> An
         return await response.json()
 
 
-async def worker(name: str, session: aiohttp.ClientSession, base: str, requests: int, timings: dict[str, Timings]) -> None:
+async def worker(name: str, session: aiohttp.ClientSession, base: str, requests: int, sku_count: int, timings: dict[str, Timings]) -> None:
     rng = random.Random(name)
+    sku_limit = max(1, sku_count)
     for _ in range(requests):
         choice = rng.random()
         if choice < 0.70:
             query = rng.choice(QUERIES)
             await timed(timings["search"], post_json(session, f"{base}/api/retail/search", {"query": query}))
         elif choice < 0.86:
-            sku = f"SKU{rng.randrange(0, 5000):05d}"
+            sku = f"SKU{rng.randrange(0, sku_limit):05d}"
             await timed(timings["product"], get_json(session, f"{base}/api/product-service/products/{sku}"))
         elif choice < 0.94:
-            await timed(timings["list"], get_json(session, f"{base}/api/product-service/products?offset={rng.randrange(0, 4900)}&limit=25"))
+            await timed(timings["list"], get_json(session, f"{base}/api/product-service/products?offset={rng.randrange(0, max(1, sku_limit - 25))}&limit=25"))
         else:
-            sku = f"SKU{rng.randrange(0, 5000):05d}"
+            sku = f"SKU{rng.randrange(0, sku_limit):05d}"
             await timed(timings["cart"], post_json(session, f"{base}/api/retail/cart", {"cartId": f"bench-{name}", "productId": sku, "quantity": 1}))
 
 
@@ -135,7 +136,7 @@ async def main() -> None:
         per_worker = max(1, args.requests // args.concurrency)
         started = time.perf_counter()
         await asyncio.gather(
-            *(worker(str(i), session, base, per_worker, timings) for i in range(args.concurrency))
+            *(worker(str(i), session, base, per_worker, args.count, timings) for i in range(args.concurrency))
         )
         elapsed = time.perf_counter() - started
 
