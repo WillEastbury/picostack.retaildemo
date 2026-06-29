@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-v2-sts
+  namespace: retail-v2
+spec:
+  selector:
+    app: retail-v2
+    role: sts
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

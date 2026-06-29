@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-v2-search
+  namespace: retail-v2
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: retail-v2
+      role: search
+  template:
+    metadata:
+      labels:
+        app: retail-v2
+        role: search
+    spec:
+      serviceAccountName: retail-v2
+      containers:
+        - name: retail-v2
+          image: RETAIL_V2_IMAGE
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_ROLE
+              value: search
+            - name: RETAIL_V2_REGION
+              value: global
+            - name: RETAIL_V2_CATALOG
+              value: /app/V2/sample-catalog.json
+          ports:
+            - containerPort: 8080

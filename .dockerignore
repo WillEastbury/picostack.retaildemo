@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.git/
+.github/
+build/
+*.csv
+*.log
+node_modules/

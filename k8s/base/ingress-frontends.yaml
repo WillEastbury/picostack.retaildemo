@@ -1,0 +1,94 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wave-frontends
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: store.wave.local
+    http:
+      paths:
+      - path: /sts
+        pathType: Prefix
+        backend:
+          service:
+            name: wave-sts
+            port:
+              number: 8801
+      - path: /search
+        pathType: Prefix
+        backend:
+          service:
+            name: wavesearch-api
+            port:
+              number: 8803
+      - path: /erp
+        pathType: Prefix
+        backend:
+          service:
+            name: wavestore-erp-api
+            port:
+              number: 8802
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wavestore-frontend
+            port:
+              number: 8804
+  - host: erp.wave.local
+    http:
+      paths:
+      - path: /sts
+        pathType: Prefix
+        backend:
+          service:
+            name: wave-sts
+            port:
+              number: 8801
+      - path: /erp
+        pathType: Prefix
+        backend:
+          service:
+            name: wavestore-erp-api
+            port:
+              number: 8802
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wavestore-erp-frontend
+            port:
+              number: 8805
+  - host: labs.wave.local
+    http:
+      paths:
+      - path: /sts
+        pathType: Prefix
+        backend:
+          service:
+            name: wave-sts
+            port:
+              number: 8801
+      - path: /search
+        pathType: Prefix
+        backend:
+          service:
+            name: wavesearch-api
+            port:
+              number: 8803
+      - path: /erp
+        pathType: Prefix
+        backend:
+          service:
+            name: wavestore-erp-api
+            port:
+              number: 8802
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wavesearch-frontend
+            port:
+              number: 8806

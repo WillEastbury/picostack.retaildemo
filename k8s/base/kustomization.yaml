@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wave-system
+
+commonLabels:
+  app.kubernetes.io/instance: wave
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - secrets.yaml
+  - wave-sts-deployment.yaml
+  - wavestore-erp-api-deployment.yaml
+  - wavesearch-api-deployment.yaml
+  - wavestore-frontend-deployment.yaml
+  - wavestore-erp-frontend-deployment.yaml
+  - wavesearch-frontend-deployment.yaml
+  - ingress-frontends.yaml
+
+images:
+  - name: ghcr.io/willeastbury/wave-sts
+    newTag: latest
+  - name: ghcr.io/willeastbury/wavestore-erp-api
+    newTag: latest
+  - name: ghcr.io/willeastbury/wavesearch-labs-retail-search-api
+    newTag: latest
+  - name: ghcr.io/willeastbury/wavestore-frontend
+    newTag: latest
+  - name: ghcr.io/willeastbury/wavestore-erp-frontend
+    newTag: latest
+  - name: ghcr.io/willeastbury/wavesearch-labs-frontend
+    newTag: latest

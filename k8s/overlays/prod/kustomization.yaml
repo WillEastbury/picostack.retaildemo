@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wave-prod
+
+bases:
+  - ../../base
+
+replicas:
+  - name: wave-sts
+    count: 3
+  - name: wavestore-erp-api
+    count: 3
+  - name: wavesearch-api
+    count: 5
+  - name: wavestore-frontend
+    count: 3
+  - name: wavestore-erp-frontend
+    count: 3
+  - name: wavesearch-frontend
+    count: 3
+
+images:
+  - name: ghcr.io/willeastbury/wave-sts
+    newTag: v1.0.0
+  - name: ghcr.io/willeastbury/wavestore-erp-api
+    newTag: v1.0.0
+  - name: ghcr.io/willeastbury/wavesearch-labs-retail-search-api
+    newTag: v1.0.0
+  - name: ghcr.io/willeastbury/wavestore-frontend
+    newTag: v1.0.0
+  - name: ghcr.io/willeastbury/wavestore-erp-frontend
+    newTag: v1.0.0
+  - name: ghcr.io/willeastbury/wavesearch-labs-frontend
+    newTag: v1.0.0

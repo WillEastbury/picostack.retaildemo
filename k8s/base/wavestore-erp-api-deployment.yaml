@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wavestore-erp-api
+  labels:
+    app: wavestore-erp-api
+    component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wavestore-erp-api
+  template:
+    metadata:
+      labels:
+        app: wavestore-erp-api
+        component: backend
+    spec:
+      containers:
+      - name: wavestore-erp-api
+        image: ghcr.io/willeastbury/wavestore-erp-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8802
+          name: http
+        env:
+        - name: PORT
+          value: "8802"
+        - name: WAVE_STS_URL
+          value: "http://wave-sts:8801"
+        - name: WAVE_STS_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: wave-sts-secret
+              key: secret
+        - name: LOG_LEVEL
+          value: "info"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8802
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8802
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: erp-data
+          mountPath: /app/data
+      volumes:
+      - name: erp-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wavestore-erp-api
+  labels:
+    app: wavestore-erp-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8802
+    targetPort: 8802
+    protocol: TCP
+    name: http
+  selector:
+    app: wavestore-erp-api

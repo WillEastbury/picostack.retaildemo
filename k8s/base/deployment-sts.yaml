@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-v2-sts
+  namespace: retail-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-v2
+      role: sts
+  template:
+    metadata:
+      labels:
+        app: retail-v2
+        role: sts
+    spec:
+      serviceAccountName: retail-v2
+      containers:
+        - name: retail-v2
+          image: RETAIL_V2_IMAGE
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_ROLE
+              value: sts
+            - name: RETAIL_V2_REGION
+              value: global
+          ports:
+            - containerPort: 8080
