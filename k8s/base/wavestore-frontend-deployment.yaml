@@ -27,11 +27,11 @@ spec:
         - name: PORT
           value: "8804"
         - name: WAVE_STS_URL
-          value: ""
+          value: "http://wave-sts:8801"
         - name: WAVESEARCH_API_URL
-          value: ""
+          value: "http://wavesearch-api:8803"
         - name: WAVESTORE_ERP_API_URL
-          value: ""
+          value: "http://wavestore-erp-api:8802"
         - name: LOG_LEVEL
           value: "info"
         resources:
