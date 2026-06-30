@@ -223,7 +223,53 @@ textarea {
     <div class="card">
       <h2>Prompt to rebuild the platform from scratch</h2>
       <p>Use this prompt with Copilot/agent mode to recreate the stack end-to-end:</p>
-      <textarea id="rebuildPrompt" readonly>Create a demo-only retail search platform on AKS with six services: wave-sts, wavestore-erp-api, wavesearch-api, wavestore-frontend, wavestore-erp-frontend, wavesearch-frontend. Requirements: (1) zero-trust JWT auth with tenant isolation and scope-based authorization; (2) ERP is source of truth and exports catalog; (3) wavesearch-api ingests ERP catalog and serves /search/query and /search/recommend plus events and admin analytics/rules; (4) all services run as Kubernetes deployments/services in a wave-dev namespace; (5) ingress host routing under *.retail.demos.wavefunctionlabs.com through one shared ingress controller IP; (6) ARM-compatible in-cluster Kaniko builds into ACR; (7) docs and runbook for build, deploy, health checks, and smoke validation.</textarea>
+      <textarea id="rebuildPrompt" readonly>Build a demo-only enterprise retail search system (Vertex Retail Search equivalent behavior) on AKS using OSS components, with no Azure AI Search dependency.
+
+Business intent:
+- Showcase reusable demo architecture with clear service boundaries.
+- Support dynamic facets, boost/bury merchandising, recommendations, and analytics.
+- Run as a dev-only environment (no production store topology).
+
+Create these six deployable services:
+1) wave-sts (auth service): issue/validate short-lived JWTs with audience + scope enforcement.
+2) wavestore-erp-api: source of truth for products, stock, pricing, offers, customers, orders, invoices; expose /erp/export/catalog.
+3) wavesearch-api: ingest catalog from ERP; provide /search/query, /search/recommend, /search/events, /search/admin/*.
+4) wavestore-frontend: shopper UI (Bootswatch style) for search, recs, basket, order placement.
+5) wavestore-erp-frontend: WaveFunction/BareMetalJsTools style ERP admin GUI.
+6) wavesearch-frontend: WaveFunction/BareMetalJsTools style search ops GUI + platform docs pages.
+
+Functional requirements:
+- Zero-trust everywhere: bearer token required, X-Tenant-Id required, tenant header/token match required.
+- Enforce audience-scoped tokens and route-level scopes (no implicit admin bypass).
+- Search supports keyword retrieval + facets + merchandising boost/bury controls.
+- Recommendations endpoint supports product/visitor context and returns priced products.
+- Events endpoint captures click/search telemetry; admin analytics endpoint summarizes behavior.
+- ERP-to-search ingestion path: POST /search/ingest/from-erp using ERP export + token.
+
+Platform and deployment constraints:
+- AKS namespace: wave-dev only.
+- Single shared ingress controller/public IP; host-based routing under retail.demos.wavefunctionlabs.com.
+- Required hosts:
+  store.retail.demos.wavefunctionlabs.com
+  erp.retail.demos.wavefunctionlabs.com
+  labs.retail.demos.wavefunctionlabs.com
+  sts.retail.demos.wavefunctionlabs.com
+  search-api.retail.demos.wavefunctionlabs.com
+  erp-api.retail.demos.wavefunctionlabs.com
+  orchestrator.retail.demos.wavefunctionlabs.com
+- Build images in-cluster with Kaniko (ARM node compatible), push to ACR, then rollout.
+- Do not rely on remote CI builds for demo deploys.
+
+Documentation/UI deliverables:
+- Demo orchestrator page linking all UIs and service endpoints, with architecture summary.
+- Platform guide page explaining indexing flow, APIs, design assumptions, and rebuild prompt.
+- README + deployment runbook with build/deploy/health/smoke commands.
+
+Validation criteria:
+- All six deployments healthy in wave-dev.
+- Ingress routes live on shared IP.
+- Search, recommend, ingest, analytics, and order flows callable end-to-end.
+- Frontend style policy: Bootswatch for storefront/search page; WaveFunction style for other GUIs.</textarea>
       <div style="margin-top:12px;">
         <button class="btn" id="copyPrompt">Copy rebuild prompt</button>
       </div>
