@@ -156,7 +156,7 @@ textarea {
           <h3>Commerce Plane</h3>
           <ul>
             <li><strong>wavestore-erp-api</strong>: source of truth for products, stock, pricing, orders, and export catalog.</li>
-            <li><strong>wavestore-frontend</strong>: shopper UI using search + recommendations and ERP order placement.</li>
+            <li><strong>wavestore-frontend</strong>: shopper UI with basket module, checkout module, account module, and ERP order placement.</li>
           </ul>
         </div>
         <div>
@@ -164,6 +164,36 @@ textarea {
           <ul>
             <li><strong>wavesearch-api</strong>: indexing runtime, query API, recommendation API, events pipeline, and admin controls.</li>
             <li><strong>Ingress (nginx)</strong>: host/path routing through one shared public IP.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Modular integration boundaries</h2>
+      <div class="grid">
+        <div>
+          <h3>Storefront modules</h3>
+          <ul>
+            <li><strong>Basket module</strong>: local basket state, quantity controls, totals, and checkout payload construction.</li>
+            <li><strong>Checkout module</strong>: calls <code>POST /v2/checkout</code> and persists placed orders to account history.</li>
+            <li><strong>Account module</strong>: sign-in via STS and order history via <code>GET /v2/account/orders</code>.</li>
+            <li><strong>Promotions module</strong>: loads ERP offers via <code>GET /v2/offers</code>; banner click applies offer query/category/productIds and executes storefront search.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>ERP modules</h3>
+          <ul>
+            <li><strong>Order module</strong>: <code>POST /erp/orders</code> validates items, prices from ERP pricing state, decrements stock, and creates invoice.</li>
+            <li><strong>Catalog module</strong>: <code>/erp/products</code>, <code>/erp/stock</code>, <code>/erp/pricing</code>, <code>/erp/offers</code>, <code>/erp/export/catalog</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Search modules</h3>
+          <ul>
+            <li><strong>Ingest module</strong>: <code>/search/ingest/from-erp</code> materializes catalog snapshots into runtime indexes.</li>
+            <li><strong>Query module</strong>: <code>/search/query</code> handles retrieval + facets.</li>
+            <li><strong>Merchandising module</strong>: <code>/search/admin/rules</code> applies boost/bury/pin controls at ranking time.</li>
           </ul>
         </div>
       </div>
@@ -392,6 +422,7 @@ def orchestrator_html() -> str:
     <div class='card'>
       <h3>How data flows</h3>
       <ul>
+        <li>Storefront basket/checkout calls <code>/v2/checkout</code>, which places authoritative orders in ERP.</li>
         <li>ERP updates product/stock/pricing state.</li>
         <li>Labs calls <code>/search/ingest/from-erp</code> to pull ERP catalog export.</li>
         <li>WaveSearch rebuilds runtime index and serves query/recommend endpoints.</li>
@@ -454,9 +485,10 @@ def create_app() -> FastAPI:
       <div class='muted'>Boost/bury controls, promotions, facets, analytics, and click-through stats.</div>
       <div><a href='/orchestrator' target='_blank' rel='noopener'>Open demo orchestrator</a> · <a href='/platform-guide' target='_blank' rel='noopener'>Open indexing/search/recommendations architecture guide</a></div>
     </div>
-    <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
+    <div class='stack' style='grid-template-columns:1fr 1fr 1fr auto auto; align-items:center;'>
       <input id='tenant' value='demo-tenant'>
       <input id='user' value='search.admin'>
+      <input id='password' value='demo123!' type='password'>
       <button id='signIn'>Sign in</button>
       <span id='authState' class='muted'>Signed out</span>
     </div>
@@ -496,7 +528,7 @@ def create_app() -> FastAPI:
 </div>
 <script>
 const cfg={{sts:'{sts}',search:'{search_api}',erp:'{erp_api}'}};let token='';let erpToken='';
-async function signIn(){{const tenant=document.getElementById('tenant').value;const subject=document.getElementById('user').value;const tokenReq=await fetch(cfg.sts+'/sts/token',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':tenant}},body:JSON.stringify({{audience:'wavesearch-api',tenant,subject,scopes:['search.query','search.admin','search.ingest','events.write']}})}});const tokenJson=await tokenReq.json();if(!tokenReq.ok)throw new Error(tokenJson.detail||'STS issue failed');token=tokenJson.access_token||'';const erpReq=await fetch(cfg.sts+'/sts/token',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':tenant}},body:JSON.stringify({{audience:'wavestore-erp-api',tenant,subject,scopes:['erp.export']}})}});const erpJson=await erpReq.json();if(!erpReq.ok)throw new Error(erpJson.detail||'STS issue failed');erpToken=erpJson.access_token||'';document.getElementById('authState').textContent=token&&erpToken?'Signed in':'Failed';}}
+async function signIn(){{const tenant=document.getElementById('tenant').value;const username=document.getElementById('user').value;const password=document.getElementById('password').value;const tokenReq=await fetch(cfg.sts+'/sts/login',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':tenant}},body:JSON.stringify({{audience:'wavesearch-api',tenant,username,password,scopes:['search.query','search.admin','search.ingest','events.write']}})}});const tokenJson=await tokenReq.json();if(!tokenReq.ok)throw new Error(tokenJson.detail||'STS login failed');token=tokenJson.access_token||'';const erpReq=await fetch(cfg.sts+'/sts/login',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':tenant}},body:JSON.stringify({{audience:'wavestore-erp-api',tenant,username,password,scopes:['erp.export']}})}});const erpJson=await erpReq.json();if(!erpReq.ok)throw new Error(erpJson.detail||'STS login failed');erpToken=erpJson.access_token||'';document.getElementById('authState').textContent=token&&erpToken?'Signed in':'Failed';}}
 async function api(path,method='GET',body=null){{const r=await fetch(cfg.search+path,{{method,headers:{{'Content-Type':'application/json','Authorization':'Bearer '+token,'X-Tenant-Id':document.getElementById('tenant').value}},body:body?JSON.stringify(body):null}});document.getElementById('out').textContent=await r.text();}}
 document.getElementById('ingestFromErp').addEventListener('click',()=>api('/search/ingest/from-erp','POST',{{erpCatalogUrl:cfg.erp+'/erp/export/catalog',erpToken}}));
 document.getElementById('runQuery').addEventListener('click',()=>api('/search/query','POST',{{query:document.getElementById('query').value,pageSize:10}}));

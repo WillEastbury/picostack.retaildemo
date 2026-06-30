@@ -203,9 +203,10 @@
       <div class="card-body">
         <h5>Sign in</h5>
         <div class="row g-2 mb-2">
-          <div class="col-sm-5"><input id="loginTenant" class="form-control form-control-sm" placeholder="Tenant" value="demo-tenant" /></div>
-          <div class="col-sm-5"><input id="loginUser" class="form-control form-control-sm" placeholder="User" value="wave.user" /></div>
-          <div class="col-sm-2 d-grid"><button id="loginBtn" class="btn btn-primary btn-sm">Sign in</button></div>
+          <div class="col-sm-4"><input id="loginTenant" class="form-control form-control-sm" placeholder="Tenant" value="demo-tenant" /></div>
+          <div class="col-sm-4"><input id="loginUser" class="form-control form-control-sm" placeholder="User" value="wave.user" /></div>
+          <div class="col-sm-3"><input id="loginPassword" class="form-control form-control-sm" placeholder="Password" value="demo123!" type="password" /></div>
+          <div class="col-sm-1 d-grid"><button id="loginBtn" class="btn btn-primary btn-sm">Sign in</button></div>
         </div>
         <p id="accountAuthStatus" class="text-body-secondary small mb-0">Signed out</p>
       </div>
@@ -221,6 +222,10 @@
     const state = {
       catalog: [],
       catalogById: new Map(),
+      offers: [],
+      offersById: new Map(),
+      activeOfferId: "",
+      activeOfferProductIds: null,
       basket: loadJson("wavestore-basket", []),
       orders: loadJson("wavestore-orders", []),
       authToken: loadJson("wavestore-auth-token", ""),
@@ -262,9 +267,8 @@
 
     // --- API ---
     async function api(path, method = "GET", body = null) {
-      const opts = { method, headers: { "Content-Type": "application/json" } };
+      const opts = { method, headers: { "Content-Type": "application/json", "X-Tenant-Id": state.authTenant || tenantId } };
       if (state.authToken) opts.headers.Authorization = `Bearer ${state.authToken}`;
-      else opts.headers["X-Tenant-Id"] = tenantId;
       if (body) opts.body = JSON.stringify(body);
       const r = await fetch(path, opts);
       if (!r.ok) throw new Error(`${method} ${path} -> ${r.status}`);
@@ -290,11 +294,24 @@
       persistBasket();
     }
     function clearBasket() { state.basket = []; persistBasket(); renderBasketPage(); }
-    function checkout() {
+    async function checkout() {
       if (!state.basket.length) return;
-      state.orders.unshift({ orderId: `ORD-${Date.now()}`, placedAt: Date.now(), items: [...state.basket], total: basketTotal() });
-      saveJson("wavestore-orders", state.orders);
-      clearBasket();
+      const payload = {
+        customerId: state.authUser || "guest",
+        items: state.basket.map(i => ({ productId: i.productId, quantity: i.quantity }))
+      };
+      try {
+        const resp = await api("/v2/checkout", "POST", payload);
+        if (resp?.order) {
+          state.orders.unshift(resp.order);
+          saveJson("wavestore-orders", state.orders);
+        }
+        clearBasket();
+        await loadAccountOrders();
+        alert("Order placed in ERP successfully.");
+      } catch (err) {
+        alert(`Checkout failed: ${err.message}`);
+      }
     }
 
     function renderBasketCount() { el("basketCount").textContent = String(basketCount()); }
@@ -385,6 +402,9 @@
         const resp = await api("/v2/search", "POST", { query, pageSize: 50, filters: {} });
         let items = (resp.results || []).map(r => r.product || r).filter(Boolean);
         if (!query) items = state.catalog.slice();
+        if (state.activeOfferProductIds) {
+          items = items.filter(p => state.activeOfferProductIds.has(String(p.id || "")));
+        }
         items = items.filter(p => matchesFilters(p, filters));
         items = sortProducts(items, filters.sort);
         renderResults(items, query);
@@ -539,7 +559,12 @@
     async function loginWithSts() {
       const tenant = el("loginTenant").value.trim() || "demo-tenant";
       const user = el("loginUser").value.trim() || "wave.user";
-      const resp = await fetch("/v2/auth/token", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenant, subject: user, scopes: ["search.query", "events.write"] }) });
+      const password = el("loginPassword").value || "";
+      const resp = await fetch("/v2/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant, username: user, password, scopes: ["search.query", "events.write", "erp.read", "erp.order"] })
+      });
       if (!resp.ok) throw new Error("Login failed");
       const data = await resp.json();
       state.authToken = data.access_token || "";
@@ -549,6 +574,41 @@
       saveJson("wavestore-auth-user", state.authUser);
       saveJson("wavestore-auth-tenant", state.authTenant);
       el("accountAuthStatus").textContent = `Signed in as ${user}`;
+      await loadAccountOrders();
+    }
+
+    async function loadAccountOrders() {
+      const panel = el("accountOrders");
+      if (!panel) return;
+      const customerId = state.authUser || "guest";
+      try {
+        const resp = await api(`/v2/account/orders?customerId=${encodeURIComponent(customerId)}`);
+        const orders = Array.isArray(resp?.orders) ? resp.orders : [];
+        if (!orders.length) {
+          panel.innerHTML = '<div class="alert alert-light">No ERP orders yet for this account.</div>';
+          return;
+        }
+        panel.innerHTML = `
+          <div class="card">
+            <div class="card-body">
+              <h5 class="mb-3">ERP order history</h5>
+              <div class="list-group">
+                ${orders.slice(0, 20).map(o => `
+                  <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong>${esc(o.id || o.orderId || "Order")}</strong>
+                      <span class="badge text-bg-secondary">${esc(o.status || "PLACED")}</span>
+                    </div>
+                    <div class="small text-body-secondary">${esc(o.createdAt || "")}</div>
+                    <div class="small mt-1">${money(o.total || o.amount || 0)} • ${(o.items || []).length} item(s)</div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>`;
+      } catch {
+        panel.innerHTML = '<div class="alert alert-warning">Could not load ERP order history.</div>';
+      }
     }
 
     // --- Filter population ---
@@ -590,6 +650,8 @@
       const catFilter = el("categoryFilter");
       if (catFilter) catFilter.value = cat;
       el("query").value = "";
+      state.activeOfferId = "";
+      state.activeOfferProductIds = null;
       showSearchView();
       runSearch();
       el("categoryNav").querySelectorAll(".nav-link").forEach(link => {
@@ -652,16 +714,73 @@
     }
 
     // --- Offers Carousel ---
+    async function loadOffers() {
+      try {
+        const resp = await api("/v2/offers");
+        const offers = Array.isArray(resp?.offers) ? resp.offers : [];
+        state.offers = offers;
+        state.offersById = new Map(offers.map(o => [String(o.id || ""), o]));
+      } catch {
+        state.offers = [];
+        state.offersById = new Map();
+      }
+    }
+
+    function applyOffer(offerId) {
+      const offer = state.offersById.get(String(offerId || ""));
+      if (!offer) return;
+      state.activeOfferId = String(offer.id || "");
+      const productIds = Array.isArray(offer.productIds) ? offer.productIds.map(x => String(x)) : [];
+      state.activeOfferProductIds = productIds.length ? new Set(productIds) : null;
+      if (el("query")) el("query").value = offer.query || "";
+      if (offer.category && el("categoryFilter")) el("categoryFilter").value = offer.category;
+      if (offer.brand && el("brandFilter")) el("brandFilter").value = offer.brand;
+      showSearchView();
+      runSearch();
+    }
+
     function renderCarousel() {
       const inner = el("carouselInner");
       const indicators = el("carouselIndicators");
-      if (!inner || !indicators) return;
+      if (!inner) return;
+      if (indicators) indicators.innerHTML = "";
+      if (state.offers.length) {
+        inner.innerHTML = "";
+        state.offers.slice(0, 6).forEach((offer, i) => {
+          if (indicators) indicators.innerHTML += `<button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="${i}" ${i === 0 ? 'class="active"' : ""}></button>`;
+          const slide = document.createElement("div");
+          slide.className = `carousel-item${i === 0 ? " active" : ""}`;
+          const banner = offer.bannerImage || ["/static/images/banner-summer-sale.jpg", "/static/images/banner-new-arrivals.jpg", "/static/images/banner-free-delivery.jpg"][i % 3];
+          const title = offer.title || "Featured offer";
+          const subtitle = offer.subtitle || offer.query || "Tap to browse products in this offer";
+          const cta = offer.cta || "Shop offer";
+          slide.innerHTML = `
+            <a href="/?offer=${encodeURIComponent(String(offer.id || ""))}" class="text-decoration-none offer-slide-link" data-offer-id="${esc(String(offer.id || ""))}">
+              <div class="position-relative">
+                <img src="${esc(banner)}" class="d-block w-100" alt="${esc(title)}" style="max-height:280px;object-fit:cover;">
+                <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2 text-start">
+                  <h5 class="mb-1">${esc(title)}</h5>
+                  <p class="small mb-1">${esc(subtitle)}</p>
+                  <span class="badge text-bg-primary">${esc(cta)}</span>
+                </div>
+              </div>
+            </a>`;
+          inner.appendChild(slide);
+        });
+        inner.querySelectorAll(".offer-slide-link").forEach(link => {
+          link.addEventListener("click", e => {
+            e.preventDefault();
+            applyOffer(link.dataset.offerId || "");
+          });
+        });
+        return;
+      }
       const items = state.catalog.filter(p => normalizeAvailability(p) === "IN_STOCK").slice(0, 5);
       if (!items.length) { inner.innerHTML = '<div class="carousel-item active"><div class="p-5 text-center bg-body-tertiary rounded"><h4>Welcome to WaveStore</h4><p class="text-body-secondary">Offers loading...</p></div></div>'; return; }
       inner.innerHTML = "";
-      indicators.innerHTML = "";
+      if (indicators) indicators.innerHTML = "";
       items.forEach((p, i) => {
-        indicators.innerHTML += `<button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="${i}" ${i === 0 ? 'class="active"' : ""}></button>`;
+        if (indicators) indicators.innerHTML += `<button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="${i}" ${i === 0 ? 'class="active"' : ""}></button>`;
         const slide = document.createElement("div");
         slide.className = `carousel-item${i === 0 ? " active" : ""}`;
         slide.innerHTML = `
@@ -758,12 +877,19 @@
     }
 
     if (pageMode === "home") {
-      el("searchBtn").addEventListener("click", () => { showSearchView(); runSearch(); });
-      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { showSearchView(); runSearch(); } });
+      el("searchBtn").addEventListener("click", () => { state.activeOfferId = ""; state.activeOfferProductIds = null; showSearchView(); runSearch(); });
+      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { state.activeOfferId = ""; state.activeOfferProductIds = null; showSearchView(); runSearch(); } });
       [el("categoryFilter"), el("brandFilter"), el("availabilityFilter"), el("sortFilter"), el("minPrice"), el("maxPrice"), el("minStock"), el("maxStock")]
-        .forEach(n => n?.addEventListener("change", () => runSearch()));
+        .forEach(n => n?.addEventListener("change", () => { state.activeOfferId = ""; state.activeOfferProductIds = null; runSearch(); }));
       renderHistoryRail();
-      loadCatalog().then(() => { renderCarousel(); renderDealsGrid(); loadRecommendations(); }).catch(err => console.error(err));
+      loadCatalog().then(async () => {
+        await loadOffers();
+        renderCarousel();
+        const offerFromUrl = new URLSearchParams(window.location.search).get("offer");
+        if (offerFromUrl) applyOffer(offerFromUrl);
+        renderDealsGrid();
+        loadRecommendations();
+      }).catch(err => console.error(err));
     } else {
       loadCategoryNav();
     }
@@ -774,15 +900,17 @@
 
     if (pageMode === "basket") {
       renderBasketPage();
-      el("checkoutBtn")?.addEventListener("click", () => { checkout(); renderBasketPage(); });
+      el("checkoutBtn")?.addEventListener("click", async () => { await checkout(); renderBasketPage(); });
       el("clearBasketBtn")?.addEventListener("click", () => { clearBasket(); });
     }
 
     if (pageMode === "account") {
       el("loginBtn")?.addEventListener("click", () => loginWithSts().catch(err => { el("accountAuthStatus").textContent = err.message; }));
-      if (state.authToken) el("accountAuthStatus").textContent = `Signed in as ${state.authUser}`;
+      if (state.authToken) {
+        el("accountAuthStatus").textContent = `Signed in as ${state.authUser}`;
+        loadAccountOrders();
+      }
     }
   </script>
 </body>
 </html>
-

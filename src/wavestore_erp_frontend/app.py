@@ -49,9 +49,10 @@ def create_app() -> FastAPI:
       <div class='brand'>WaveStore ERP</div>
       <div class='muted'>WaveFunction-style admin UI for products, stock, pricing, offers, customers, orders, and invoices.</div>
     </div>
-    <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
+    <div class='stack' style='grid-template-columns:1fr 1fr 1fr auto auto; align-items:center;'>
       <input id='tenant' value='demo-tenant'>
       <input id='user' value='erp.admin'>
+      <input id='password' value='demo123!' type='password'>
       <a href='https://orchestrator.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener' style='text-decoration:none;'><button type='button' class='secondary'>Demo Orchestrator</button></a>
       <button id='signIn'>Sign in</button>
       <span id='authState' class='muted'>Signed out</span>
@@ -61,7 +62,7 @@ def create_app() -> FastAPI:
   <div class='grid'>
     <div class='panel'>
       <h3>Upsert commands</h3>
-      <textarea id='payload'>{{"id":"SKU-ENTERPRISE-001","title":"Enterprise Demo Product","categories":["Demo"],"brands":["WaveStore"],"price":19.99,"availableQuantity":20}}</textarea>
+      <textarea id='payload'>{{"id":"offer-summer-jackets","title":"Summer Jackets 30% Off","subtitle":"Tap banner to search matching products","bannerImage":"/static/images/banner-summer-sale.jpg","query":"jacket","category":"Outdoor > Clothing > Jackets","brand":"Contoso Trail","productIds":["SKU-001"],"cta":"Shop now"}}</textarea>
       <div class='stack' style='margin-top:10px; grid-template-columns:1fr 1fr;'>
         <button data-act='products'>Upsert Product</button>
         <button data-act='stock'>Set Stock</button>
@@ -92,7 +93,7 @@ def create_app() -> FastAPI:
 </div>
 <script>
 const cfg={{sts:'{sts}',erp:'{erp_api}'}};let token='';
-async function signIn(){{const r=await fetch(cfg.sts+'/sts/token',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':document.getElementById('tenant').value}},body:JSON.stringify({{audience:'wavestore-erp-api',tenant:document.getElementById('tenant').value,subject:document.getElementById('user').value,scopes:['erp.read','erp.write','erp.order']}})}});const j=await r.json();token=j.access_token||'';document.getElementById('authState').textContent=token?'Signed in':'Failed';}}
+async function signIn(){{const tenant=document.getElementById('tenant').value;const r=await fetch(cfg.sts+'/sts/login',{{method:'POST',headers:{{'Content-Type':'application/json','X-Tenant-Id':tenant}},body:JSON.stringify({{audience:'wavestore-erp-api',tenant,username:document.getElementById('user').value,password:document.getElementById('password').value,scopes:['erp.read','erp.write','erp.order','erp.export']}})}});const j=await r.json();if(!r.ok)throw new Error(j.detail||'Login failed');token=j.access_token||'';document.getElementById('authState').textContent=token?'Signed in':'Failed';}}
 async function call(path,method='GET',body=null){{const r=await fetch(cfg.erp+path,{{method,headers:{{'Content-Type':'application/json','Authorization':'Bearer '+token,'X-Tenant-Id':document.getElementById('tenant').value}},body:body?JSON.stringify(body):null}});const t=await r.text();document.getElementById('out').textContent=t;}}
 for(const b of document.querySelectorAll('[data-get]')){{b.addEventListener('click',()=>call('/erp/'+b.dataset.get));}}
 for(const b of document.querySelectorAll('[data-act]')){{b.addEventListener('click',()=>{{const p=JSON.parse(document.getElementById('payload').value||'{{}}');const map={{products:'/erp/products',stock:'/erp/stock:set',pricing:'/erp/pricing',offers:'/erp/offers',customers:'/erp/customers'}};call(map[b.dataset.act],'POST',p);}});}}

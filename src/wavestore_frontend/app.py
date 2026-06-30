@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, Header, HTTPException, Query
@@ -56,7 +57,6 @@ def _fallback_products() -> list[dict[str, Any]]:
 def create_app() -> FastAPI:
     app = FastAPI(title="WaveStore Frontend")
 
-    # Serve AI-generated product/banner images
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -89,8 +89,7 @@ def create_app() -> FastAPI:
     def bearer_or_issue(authorization: str | None, audience: str, tenant: str, subject: str, scopes: list[str]) -> str:
         if authorization and authorization.lower().startswith("bearer "):
             return authorization
-        token = issue_token(audience, tenant, subject, scopes)
-        return f"Bearer {token}"
+        return f"Bearer {issue_token(audience, tenant, subject, scopes)}"
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -124,6 +123,35 @@ def create_app() -> FastAPI:
         scopes = [str(s) for s in scopes_raw] if isinstance(scopes_raw, list) and scopes_raw else ["search.query", "events.write"]
         token = issue_token("wavesearch-api", tenant, subject, scopes)
         return {"access_token": token, "token_type": "Bearer"}
+
+    @app.post("/v2/auth/login")
+    async def v2_auth_login(payload: dict[str, Any]) -> dict[str, Any]:
+        tenant = str(payload.get("tenant") or "demo-tenant")
+        username = str(payload.get("username") or "").strip()
+        password = str(payload.get("password") or "")
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="username and password are required")
+        scopes_raw = payload.get("scopes")
+        scopes = [str(s) for s in scopes_raw] if isinstance(scopes_raw, list) and scopes_raw else ["search.query", "events.write", "erp.read", "erp.order"]
+        try:
+            login = _json_request(
+                f"{sts}/sts/login",
+                method="POST",
+                body={
+                    "tenant": tenant,
+                    "username": username,
+                    "password": password,
+                    "audience": "wavesearch-api",
+                    "scopes": scopes,
+                },
+                headers={"X-Tenant-Id": tenant},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"STS login failed: {exc}") from exc
+        token = str(login.get("access_token") or "")
+        if not token:
+            raise HTTPException(status_code=502, detail="STS login returned no access_token")
+        return {"access_token": token, "token_type": "Bearer", "username": username, "tenant": tenant}
 
     @app.post("/v2/search")
     async def v2_search(
@@ -168,6 +196,59 @@ def create_app() -> FastAPI:
             )
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"recommend backend failed: {exc}") from exc
+
+    @app.get("/v2/offers")
+    async def v2_offers(
+        authorization: Annotated[str | None, Header()] = None,
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        tenant = tenant_value(x_tenant_id)
+        bearer = f"Bearer {issue_token('wavestore-erp-api', tenant, 'wave.shopper', ['erp.read'])}"
+        try:
+            return _json_request(
+                f"{erp_api}/erp/offers",
+                headers={"Authorization": bearer, "X-Tenant-Id": tenant},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"offers backend failed: {exc}") from exc
+
+    @app.post("/v2/checkout")
+    async def v2_checkout(
+        payload: dict[str, Any],
+        authorization: Annotated[str | None, Header()] = None,
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        tenant = tenant_value(x_tenant_id)
+        customer_id = str(payload.get("customerId") or "guest")
+        items = payload.get("items") if isinstance(payload.get("items"), list) else []
+        if not items:
+            raise HTTPException(status_code=400, detail="checkout requires items[]")
+        bearer = f"Bearer {issue_token('wavestore-erp-api', tenant, 'wave.shopper', ['erp.order', 'erp.read', 'erp.write'])}"
+        try:
+            return _json_request(
+                f"{erp_api}/erp/orders",
+                method="POST",
+                body={"customerId": customer_id, "items": items},
+                headers={"Authorization": bearer, "X-Tenant-Id": tenant},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"checkout failed: {exc}") from exc
+
+    @app.get("/v2/account/orders")
+    async def v2_account_orders(
+        customerId: str,
+        authorization: Annotated[str | None, Header()] = None,
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        tenant = tenant_value(x_tenant_id)
+        bearer = f"Bearer {issue_token('wavestore-erp-api', tenant, 'wave.shopper', ['erp.read', 'erp.order'])}"
+        try:
+            return _json_request(
+                f"{erp_api}/erp/orders?customerId={quote(customerId, safe='')}",
+                headers={"Authorization": bearer, "X-Tenant-Id": tenant},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"account orders failed: {exc}") from exc
 
     @app.get("/v2/catalog/products")
     async def v2_catalog_products(

@@ -2,8 +2,24 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: wave-frontends
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+  - secretName: wave-retail-demos-tls
+    hosts:
+    - store.retail.demos.wavefunctionlabs.com
+    - erp.retail.demos.wavefunctionlabs.com
+    - labs.retail.demos.wavefunctionlabs.com
+    - sts.retail.demos.wavefunctionlabs.com
+    - search-api.retail.demos.wavefunctionlabs.com
+    - erp-api.retail.demos.wavefunctionlabs.com
+    - storefront.retail.demos.wavefunctionlabs.com
+    - erp-frontend.retail.demos.wavefunctionlabs.com
+    - labs-frontend.retail.demos.wavefunctionlabs.com
+    - orchestrator.retail.demos.wavefunctionlabs.com
   rules:
   - host: store.retail.demos.wavefunctionlabs.com
     http:
