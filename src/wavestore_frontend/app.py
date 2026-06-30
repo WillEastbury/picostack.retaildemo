@@ -13,6 +13,7 @@ from retail_v2.auth import TokenIssuer
 
 ROOT = Path(__file__).resolve().parents[2]
 TELEMETRY_DEMO = ROOT / "telemetry-demo.html"
+FALLBACK_CATALOG = ROOT / "V2" / "sample-catalog.json"
 
 
 def _json_request(url: str, method: str = "GET", body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> Any:
@@ -40,6 +41,14 @@ def _page_mode(path: str) -> str:
 def _render_telemetry_page(path: str) -> str:
     html = TELEMETRY_DEMO.read_text(encoding="utf-8")
     return html.replace("{{PAGE_MODE}}", _page_mode(path))
+
+
+def _fallback_products() -> list[dict[str, Any]]:
+    if not FALLBACK_CATALOG.exists():
+        return []
+    payload = json.loads(FALLBACK_CATALOG.read_text(encoding="utf-8"))
+    products = payload.get("products")
+    return products if isinstance(products, list) else []
 
 
 def create_app() -> FastAPI:
@@ -169,6 +178,8 @@ def create_app() -> FastAPI:
         products = export.get("products") if isinstance(export, dict) else None
         if not isinstance(products, list):
             raise HTTPException(status_code=502, detail="catalog export returned invalid products payload")
+        if not products:
+            products = _fallback_products()
         end = offset + limit
         return {"products": products[offset:end], "nextPageToken": str(end) if end < len(products) else ""}
 
@@ -187,6 +198,8 @@ def create_app() -> FastAPI:
         products = export.get("products") if isinstance(export, dict) else None
         if not isinstance(products, list):
             raise HTTPException(status_code=502, detail="catalog export returned invalid products payload")
+        if not products:
+            products = _fallback_products()
         for p in products:
             if str(p.get("id") or "") == product_id:
                 return p

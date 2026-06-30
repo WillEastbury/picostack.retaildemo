@@ -62,13 +62,12 @@ def create_app(service: RetailV2Service | None = None) -> FastAPI:
     @app.post("/search/query")
     async def search_query(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
         require_scope(context, "search.query")
-        filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else None
-        return service.search(str(payload.get("query") or ""), int(payload.get("pageSize") or 10), filters)
+        return service.search(str(payload.get("query") or ""), int(payload.get("pageSize") or 10))
 
     @app.post("/search/recommend")
     async def search_recommend(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
         require_scope(context, "search.query")
-        return service.recommend(context, payload.get("productId"), payload.get("visitorId"), int(payload.get("pageSize") or 10))
+        return service.recommend(payload.get("productId"), payload.get("visitorId"), int(payload.get("pageSize") or 10))
 
     @app.post("/search/events")
     async def search_events(
