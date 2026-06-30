@@ -240,6 +240,57 @@ textarea {
     </div>
 
     <div class="card">
+      <h2>How results are generated (user-level view)</h2>
+      <ul>
+        <li><strong>Search:</strong> when a shopper types a query, WaveSearch finds matching products from the indexed catalog, applies in-stock and merchandising signals, then returns a ranked list.</li>
+        <li><strong>Recommendations:</strong> when a shopper views a product or browses history, WaveSearch returns similar or related products using product relationships and behavior cues.</li>
+        <li><strong>Facets:</strong> the system aggregates the matched set into facet buckets (such as category, brand, availability) so users can refine quickly.</li>
+        <li><strong>Metadata:</strong> each result carries product fields from the index (title, description, price, inventory, brand/category/tags, image links) so UIs do not need extra lookup calls per card.</li>
+        <li><strong>Clickstream:</strong> user actions (search, click, view) are ingested via <code>/search/events</code> and summarized for analytics and ranking tuning.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>How results are generated (implementation-level deep dive)</h2>
+      <div class="grid">
+        <div>
+          <h3>Search ranking pipeline</h3>
+          <ol>
+            <li><strong>Candidate generation:</strong> tokenize query; retrieve candidate products from in-memory runtime indexes.</li>
+            <li><strong>Base scoring:</strong> compute relevance score from term overlap / backend rank.</li>
+            <li><strong>Merchandising adjustments:</strong> apply boost/bury/pin actions from admin rules.</li>
+            <li><strong>Inventory adjustment:</strong> penalize out-of-stock and slightly uplift healthy in-stock items.</li>
+            <li><strong>Filter + sort:</strong> apply category/brand/availability/price/stock filters and finalize ranking.</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Facets and metadata return shape</h3>
+          <ul>
+            <li>Facets are computed from the final result set using indexed fields (category, brand, availability counters).</li>
+            <li>Result documents include product metadata copied from indexed catalog snapshots plus overlayed stock/pricing context.</li>
+            <li>This enables one response to populate cards, filters, and status badges in the storefront.</li>
+          </ul>
+          <h3>Recommendations pipeline</h3>
+          <ul>
+            <li>Input context: <code>productId</code> and optional visitor context.</li>
+            <li>Candidate generation favors related categories/brands and known similarity relationships.</li>
+            <li>Scoring reuses merchandising + availability controls so recommendations respect boost/bury and stock posture.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Clickstream ingestion and usage</h3>
+          <ol>
+            <li>Storefront posts events to <code>POST /search/events</code> (search, click, view, etc.).</li>
+            <li>WaveSearch appends events to the tenant/partition append-log for durable replay and auditability.</li>
+            <li>In-memory counters/analytics are updated and surfaced via <code>GET /search/admin/analytics</code>.</li>
+            <li>Signals are used for operator decisions (boost/bury tuning, no-result diagnosis, promo effectiveness checks).</li>
+            <li>On rebuild/recovery, durable snapshots + append logs can reconstruct state and analytics context.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Key design assumptions</h2>
       <ul>
         <li>This environment is demo-only and deploys dev overlay replicas.</li>
