@@ -8,12 +8,14 @@ from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from retail_v2.auth import TokenIssuer
 
 
 ROOT = Path(__file__).resolve().parents[2]
 TELEMETRY_DEMO = ROOT / "telemetry-demo.html"
 FALLBACK_CATALOG = ROOT / "V2" / "sample-catalog.json"
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 def _json_request(url: str, method: str = "GET", body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> Any:
@@ -53,6 +55,11 @@ def _fallback_products() -> list[dict[str, Any]]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="WaveStore Frontend")
+
+    # Serve AI-generated product/banner images
+    if STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
     sts = os.environ.get("WAVE_STS_URL", "http://127.0.0.1:8801")
     search_api = os.environ.get("WAVESEARCH_API_URL", "http://127.0.0.1:8803")
     erp_api = os.environ.get("WAVESTORE_ERP_API_URL", "http://127.0.0.1:8802")

@@ -31,16 +31,24 @@
       "collectionMemberIds": [],
       "gtin": "05012345678901",
       "searchGridEligible": true,
-      "variantAttributes": ["size", "color"],
+      "variantAttributes": [
+        "size",
+        "color"
+      ],
       "title": "Aurora Storm Shell Jacket",
       "description": "Breathable waterproof shell with taped seams and a packable hood.",
       "languageCode": "en-GB",
-      "categories": ["Outdoor > Clothing > Jackets", "Outdoor > Hiking"],
-      "brands": ["Contoso Trail"],
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
       "uri": "https://store.example/products/SKU-001",
       "images": [
         {
-          "uri": "https://store.example/images/SKU-001.jpg",
+          "uri": "/static/images/product-aurora-jacket.jpg",
           "height": 1200,
           "width": 1200
         }
@@ -66,7 +74,13 @@
       "rating": {
         "ratingCount": 128,
         "averageRating": 4.7,
-        "ratingHistogram": [2, 3, 8, 32, 83]
+        "ratingHistogram": [
+          2,
+          3,
+          8,
+          32,
+          83
+        ]
       },
       "ttl": "2592000s",
       "availableTime": "2026-06-01T00:00:00Z",
@@ -75,46 +89,132 @@
       "fulfillmentInfo": [
         {
           "type": "ship-to-home",
-          "placeIds": ["warehouse-uk-1"]
+          "placeIds": [
+            "warehouse-uk-1"
+          ]
         },
         {
           "type": "pickup-in-store",
-          "placeIds": ["store-keswick", "store-ambleside"]
+          "placeIds": [
+            "store-keswick",
+            "store-ambleside"
+          ]
         }
       ],
       "attributes": {
-        "color": { "text": ["ember rose"], "searchable": true, "indexable": true },
-        "size": { "text": ["S", "M", "L"], "searchable": false, "indexable": true },
-        "gender": { "text": ["unisex"], "searchable": false, "indexable": true },
-        "material": { "text": ["recycled nylon"], "searchable": true, "indexable": true },
-        "rating": { "numbers": [4.7], "searchable": false, "indexable": true },
-        "marginBand": { "text": ["high"], "searchable": false, "indexable": true },
-        "waterproof": { "booleanValues": [true], "searchable": false, "indexable": true }
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "size": {
+          "text": [
+            "S",
+            "M",
+            "L"
+          ],
+          "searchable": false,
+          "indexable": true
+        },
+        "gender": {
+          "text": [
+            "unisex"
+          ],
+          "searchable": false,
+          "indexable": true
+        },
+        "material": {
+          "text": [
+            "recycled nylon"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "rating": {
+          "numbers": [
+            4.7
+          ],
+          "searchable": false,
+          "indexable": true
+        },
+        "marginBand": {
+          "text": [
+            "high"
+          ],
+          "searchable": false,
+          "indexable": true
+        },
+        "waterproof": {
+          "booleanValues": [
+            true
+          ],
+          "searchable": false,
+          "indexable": true
+        }
       },
       "audience": {
-        "genders": ["unisex"],
-        "ageGroups": ["adult"]
+        "genders": [
+          "unisex"
+        ],
+        "ageGroups": [
+          "adult"
+        ]
       },
       "colorInfo": {
-        "colorFamilies": ["red"],
-        "colors": ["ember rose"]
+        "colorFamilies": [
+          "red"
+        ],
+        "colors": [
+          "ember rose"
+        ]
       },
-      "sizes": ["S", "M", "L"],
-      "materials": ["recycled nylon"],
-      "patterns": ["solid"],
-      "conditions": ["new"],
-      "tags": ["waterproof", "hiking", "rain"],
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "materials": [
+        "recycled nylon"
+      ],
+      "patterns": [
+        "solid"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "waterproof",
+        "hiking",
+        "rain"
+      ],
       "enrichment": {
         "version": "2026.06.enrich-v1",
         "generatedTime": "2026-06-22T12:00:00Z",
         "taxonomy": {
-          "normalizedCategories": ["Outdoor > Clothing > Jackets", "Outdoor > Hiking"],
+          "normalizedCategories": [
+            "Outdoor > Clothing > Jackets",
+            "Outdoor > Hiking"
+          ],
           "confidence": 0.94,
           "source": "taxonomy-v1"
         },
         "derivedAttributes": {
-          "activity": { "text": ["hiking"], "confidence": 0.88, "source": "attribute-extractor" },
-          "weather": { "text": ["rain"], "confidence": 0.91, "source": "attribute-extractor" }
+          "activity": {
+            "text": [
+              "hiking"
+            ],
+            "confidence": 0.88,
+            "source": "attribute-extractor"
+          },
+          "weather": {
+            "text": [
+              "rain"
+            ],
+            "confidence": 0.91,
+            "source": "attribute-extractor"
+          }
         },
         "imageTags": [
           {
@@ -143,7 +243,13 @@
           "primaryProductId": "SKU-001",
           "gtin": "05012345678918",
           "searchGridEligible": false,
-          "inheritedFromPrimary": ["description", "categories", "brands", "images", "uri"],
+          "inheritedFromPrimary": [
+            "description",
+            "categories",
+            "brands",
+            "images",
+            "uri"
+          ],
           "title": "Aurora Storm Shell Jacket - M / Ember Rose",
           "description": "Breathable waterproof shell with taped seams and a packable hood.",
           "languageCode": "en-GB",
@@ -154,11 +260,23 @@
           "availability": "IN_STOCK",
           "availableQuantity": 18,
           "attributes": {
-            "size": { "text": ["M"] },
-            "color": { "text": ["ember rose"] }
+            "size": {
+              "text": [
+                "M"
+              ]
+            },
+            "color": {
+              "text": [
+                "ember rose"
+              ]
+            }
           },
-          "sizes": ["M"],
-          "conditions": ["new"]
+          "sizes": [
+            "M"
+          ],
+          "conditions": [
+            "new"
+          ]
         }
       ],
       "localInventories": [
@@ -170,10 +288,23 @@
             "originalPrice": 169.99
           },
           "attributes": {
-            "aisle": { "text": ["outdoor-2"], "indexable": true },
-            "displayPriority": { "numbers": [1], "indexable": true }
+            "aisle": {
+              "text": [
+                "outdoor-2"
+              ],
+              "indexable": true
+            },
+            "displayPriority": {
+              "numbers": [
+                1
+              ],
+              "indexable": true
+            }
           },
-          "fulfillmentTypes": ["pickup-in-store", "same-day-delivery"]
+          "fulfillmentTypes": [
+            "pickup-in-store",
+            "same-day-delivery"
+          ]
         }
       ],
       "retrievableFields": [
@@ -199,8 +330,12 @@
       "title": "Cold Brew Coffee Cans",
       "description": "Four pack of smooth unsweetened cold brew coffee.",
       "languageCode": "en-GB",
-      "categories": ["Grocery > Drinks > Coffee"],
-      "brands": ["Litware Roasters"],
+      "categories": [
+        "Grocery > Drinks > Coffee"
+      ],
+      "brands": [
+        "Litware Roasters"
+      ],
       "priceInfo": {
         "currencyCode": "GBP",
         "price": 6.5
@@ -210,25 +345,63 @@
       "rating": {
         "ratingCount": 54,
         "averageRating": 4.5,
-        "ratingHistogram": [1, 1, 4, 14, 34]
+        "ratingHistogram": [
+          1,
+          1,
+          4,
+          14,
+          34
+        ]
       },
       "availableTime": "2026-06-10T00:00:00Z",
       "attributes": {
-        "diet": { "text": ["vegan"], "searchable": true, "indexable": true },
-        "caffeine": { "booleanValues": [true], "searchable": false, "indexable": true },
-        "rating": { "numbers": [4.5], "searchable": false, "indexable": true }
+        "diet": {
+          "text": [
+            "vegan"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "caffeine": {
+          "booleanValues": [
+            true
+          ],
+          "searchable": false,
+          "indexable": true
+        },
+        "rating": {
+          "numbers": [
+            4.5
+          ],
+          "searchable": false,
+          "indexable": true
+        }
       },
       "enrichment": {
         "version": "2026.06.enrich-v1",
         "generatedTime": "2026-06-22T12:00:00Z",
         "taxonomy": {
-          "normalizedCategories": ["Grocery > Drinks > Coffee"],
+          "normalizedCategories": [
+            "Grocery > Drinks > Coffee"
+          ],
           "confidence": 0.97,
           "source": "taxonomy-v1"
         },
         "derivedAttributes": {
-          "diet": { "text": ["vegan"], "confidence": 0.99, "source": "merchant-attribute" },
-          "packSize": { "text": ["4 pack"], "confidence": 0.96, "source": "attribute-extractor" }
+          "diet": {
+            "text": [
+              "vegan"
+            ],
+            "confidence": 0.99,
+            "source": "merchant-attribute"
+          },
+          "packSize": {
+            "text": [
+              "4 pack"
+            ],
+            "confidence": 0.96,
+            "source": "attribute-extractor"
+          }
         },
         "quality": {
           "score": 0.87,
@@ -242,10 +415,5827 @@
           ]
         }
       },
-      "sizes": ["4 pack"],
-      "materials": ["aluminium can"],
-      "conditions": ["new"],
-      "tags": ["coffee", "cold brew", "drinks"]
+      "sizes": [
+        "4 pack"
+      ],
+      "materials": [
+        "aluminium can"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "coffee",
+        "cold brew",
+        "drinks"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-cold-brew.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-101",
+      "id": "SKU-101",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-101",
+      "gtin": "0500000000101",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 101",
+      "description": "Outerwear item 101 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-101",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 9.99
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 50,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-102",
+      "id": "SKU-102",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-102",
+      "gtin": "0500000000102",
+      "searchGridEligible": true,
+      "title": "Summit Boot 102",
+      "description": "Footwear item 102 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-102",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 13.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 51,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-103",
+      "id": "SKU-103",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-103",
+      "gtin": "0500000000103",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 103",
+      "description": "Food & Drink item 103 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-103",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 17.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 52,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-104",
+      "id": "SKU-104",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-104",
+      "gtin": "0500000000104",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 104",
+      "description": "Homeware item 104 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-104",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 21.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 53,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-105",
+      "id": "SKU-105",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-105",
+      "gtin": "0500000000105",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 105",
+      "description": "Tech item 105 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-105",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 24.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 54,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-106",
+      "id": "SKU-106",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-106",
+      "gtin": "0500000000106",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 106",
+      "description": "Outerwear item 106 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-106",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 28.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 55,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-107",
+      "id": "SKU-107",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-107",
+      "gtin": "0500000000107",
+      "searchGridEligible": true,
+      "title": "Summit Boot 107",
+      "description": "Footwear item 107 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-107",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 32.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 56,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-108",
+      "id": "SKU-108",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-108",
+      "gtin": "0500000000108",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 108",
+      "description": "Food & Drink item 108 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-108",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 36.24
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 57,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-109",
+      "id": "SKU-109",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-109",
+      "gtin": "0500000000109",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 109",
+      "description": "Homeware item 109 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-109",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 39.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 58,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-110",
+      "id": "SKU-110",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-110",
+      "gtin": "0500000000110",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 110",
+      "description": "Tech item 110 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-110",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 43.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 59,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-111",
+      "id": "SKU-111",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-111",
+      "gtin": "0500000000111",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 111",
+      "description": "Outerwear item 111 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-111",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 47.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 60,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-112",
+      "id": "SKU-112",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-112",
+      "gtin": "0500000000112",
+      "searchGridEligible": true,
+      "title": "Summit Boot 112",
+      "description": "Footwear item 112 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-112",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 51.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 61,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-113",
+      "id": "SKU-113",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-113",
+      "gtin": "0500000000113",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 113",
+      "description": "Food & Drink item 113 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-113",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 54.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 62,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-114",
+      "id": "SKU-114",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-114",
+      "gtin": "0500000000114",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 114",
+      "description": "Homeware item 114 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-114",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 58.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 63,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-115",
+      "id": "SKU-115",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-115",
+      "gtin": "0500000000115",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 115",
+      "description": "Tech item 115 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-115",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 62.49
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 64,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-116",
+      "id": "SKU-116",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-116",
+      "gtin": "0500000000116",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 116",
+      "description": "Outerwear item 116 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-116",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 66.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 65,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-117",
+      "id": "SKU-117",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-117",
+      "gtin": "0500000000117",
+      "searchGridEligible": true,
+      "title": "Summit Boot 117",
+      "description": "Footwear item 117 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-117",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 69.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 66,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-118",
+      "id": "SKU-118",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-118",
+      "gtin": "0500000000118",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 118",
+      "description": "Food & Drink item 118 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-118",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 73.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 67,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-119",
+      "id": "SKU-119",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-119",
+      "gtin": "0500000000119",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 119",
+      "description": "Homeware item 119 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-119",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 77.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 68,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-120",
+      "id": "SKU-120",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-120",
+      "gtin": "0500000000120",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 120",
+      "description": "Tech item 120 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-120",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 81.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 69,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-121",
+      "id": "SKU-121",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-121",
+      "gtin": "0500000000121",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 121",
+      "description": "Outerwear item 121 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-121",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 9.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 70,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-122",
+      "id": "SKU-122",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-122",
+      "gtin": "0500000000122",
+      "searchGridEligible": true,
+      "title": "Summit Boot 122",
+      "description": "Footwear item 122 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-122",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 13.74
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 71,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-123",
+      "id": "SKU-123",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-123",
+      "gtin": "0500000000123",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 123",
+      "description": "Food & Drink item 123 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-123",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 17.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 72,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-124",
+      "id": "SKU-124",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-124",
+      "gtin": "0500000000124",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 124",
+      "description": "Homeware item 124 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-124",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 21.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 73,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-125",
+      "id": "SKU-125",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-125",
+      "gtin": "0500000000125",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 125",
+      "description": "Tech item 125 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-125",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 24.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 74,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-126",
+      "id": "SKU-126",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-126",
+      "gtin": "0500000000126",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 126",
+      "description": "Outerwear item 126 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-126",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 28.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 75,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-127",
+      "id": "SKU-127",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-127",
+      "gtin": "0500000000127",
+      "searchGridEligible": true,
+      "title": "Summit Boot 127",
+      "description": "Footwear item 127 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-127",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 32.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 76,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-128",
+      "id": "SKU-128",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-128",
+      "gtin": "0500000000128",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 128",
+      "description": "Food & Drink item 128 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-128",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 36.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 77,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-129",
+      "id": "SKU-129",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-129",
+      "gtin": "0500000000129",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 129",
+      "description": "Homeware item 129 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-129",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 39.99
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 78,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-130",
+      "id": "SKU-130",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-130",
+      "gtin": "0500000000130",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 130",
+      "description": "Tech item 130 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-130",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 43.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 79,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-131",
+      "id": "SKU-131",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-131",
+      "gtin": "0500000000131",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 131",
+      "description": "Outerwear item 131 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-131",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 47.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 80,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-132",
+      "id": "SKU-132",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-132",
+      "gtin": "0500000000132",
+      "searchGridEligible": true,
+      "title": "Summit Boot 132",
+      "description": "Footwear item 132 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-132",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 51.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 81,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-133",
+      "id": "SKU-133",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-133",
+      "gtin": "0500000000133",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 133",
+      "description": "Food & Drink item 133 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-133",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 54.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 82,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-134",
+      "id": "SKU-134",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-134",
+      "gtin": "0500000000134",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 134",
+      "description": "Homeware item 134 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-134",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 58.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 83,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-135",
+      "id": "SKU-135",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-135",
+      "gtin": "0500000000135",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 135",
+      "description": "Tech item 135 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-135",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 62.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 84,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-136",
+      "id": "SKU-136",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-136",
+      "gtin": "0500000000136",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 136",
+      "description": "Outerwear item 136 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-136",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 66.24
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 85,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-137",
+      "id": "SKU-137",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-137",
+      "gtin": "0500000000137",
+      "searchGridEligible": true,
+      "title": "Summit Boot 137",
+      "description": "Footwear item 137 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-137",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 69.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 86,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-138",
+      "id": "SKU-138",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-138",
+      "gtin": "0500000000138",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 138",
+      "description": "Food & Drink item 138 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-138",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 73.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 87,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-139",
+      "id": "SKU-139",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-139",
+      "gtin": "0500000000139",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 139",
+      "description": "Homeware item 139 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-139",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 77.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 88,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-140",
+      "id": "SKU-140",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-140",
+      "gtin": "0500000000140",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 140",
+      "description": "Tech item 140 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-140",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 81.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 89,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-141",
+      "id": "SKU-141",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-141",
+      "gtin": "0500000000141",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 141",
+      "description": "Outerwear item 141 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-141",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 9.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 90,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-142",
+      "id": "SKU-142",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-142",
+      "gtin": "0500000000142",
+      "searchGridEligible": true,
+      "title": "Summit Boot 142",
+      "description": "Footwear item 142 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-142",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 13.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 91,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-143",
+      "id": "SKU-143",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-143",
+      "gtin": "0500000000143",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 143",
+      "description": "Food & Drink item 143 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-143",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 17.49
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 92,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-144",
+      "id": "SKU-144",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-144",
+      "gtin": "0500000000144",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 144",
+      "description": "Homeware item 144 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-144",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 21.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 93,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-145",
+      "id": "SKU-145",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-145",
+      "gtin": "0500000000145",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 145",
+      "description": "Tech item 145 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-145",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 24.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 94,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-146",
+      "id": "SKU-146",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-146",
+      "gtin": "0500000000146",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 146",
+      "description": "Outerwear item 146 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-146",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 28.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 95,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-147",
+      "id": "SKU-147",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-147",
+      "gtin": "0500000000147",
+      "searchGridEligible": true,
+      "title": "Summit Boot 147",
+      "description": "Footwear item 147 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-147",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 32.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 96,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-148",
+      "id": "SKU-148",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-148",
+      "gtin": "0500000000148",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 148",
+      "description": "Food & Drink item 148 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-148",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 36.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 97,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-149",
+      "id": "SKU-149",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-149",
+      "gtin": "0500000000149",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 149",
+      "description": "Homeware item 149 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-149",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 39.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 98,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-150",
+      "id": "SKU-150",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-150",
+      "gtin": "0500000000150",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 150",
+      "description": "Tech item 150 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-150",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 43.74
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 99,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-151",
+      "id": "SKU-151",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-151",
+      "gtin": "0500000000151",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 151",
+      "description": "Outerwear item 151 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-151",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 47.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 100,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-152",
+      "id": "SKU-152",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-152",
+      "gtin": "0500000000152",
+      "searchGridEligible": true,
+      "title": "Summit Boot 152",
+      "description": "Footwear item 152 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-152",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 51.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 101,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-153",
+      "id": "SKU-153",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-153",
+      "gtin": "0500000000153",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 153",
+      "description": "Food & Drink item 153 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-153",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 54.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 102,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-154",
+      "id": "SKU-154",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-154",
+      "gtin": "0500000000154",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 154",
+      "description": "Homeware item 154 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-154",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 58.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 103,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-155",
+      "id": "SKU-155",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-155",
+      "gtin": "0500000000155",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 155",
+      "description": "Tech item 155 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-155",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 62.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 104,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-156",
+      "id": "SKU-156",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-156",
+      "gtin": "0500000000156",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 156",
+      "description": "Outerwear item 156 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-156",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 66.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 105,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-157",
+      "id": "SKU-157",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-157",
+      "gtin": "0500000000157",
+      "searchGridEligible": true,
+      "title": "Summit Boot 157",
+      "description": "Footwear item 157 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-157",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 69.99
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 106,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-158",
+      "id": "SKU-158",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-158",
+      "gtin": "0500000000158",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 158",
+      "description": "Food & Drink item 158 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-158",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 73.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 107,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-159",
+      "id": "SKU-159",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-159",
+      "gtin": "0500000000159",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 159",
+      "description": "Homeware item 159 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-159",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 77.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 108,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-160",
+      "id": "SKU-160",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-160",
+      "gtin": "0500000000160",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 160",
+      "description": "Tech item 160 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-160",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 81.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 109,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-161",
+      "id": "SKU-161",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-161",
+      "gtin": "0500000000161",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 161",
+      "description": "Outerwear item 161 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-161",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 9.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 110,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-162",
+      "id": "SKU-162",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-162",
+      "gtin": "0500000000162",
+      "searchGridEligible": true,
+      "title": "Summit Boot 162",
+      "description": "Footwear item 162 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-162",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 13.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 111,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-163",
+      "id": "SKU-163",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-163",
+      "gtin": "0500000000163",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 163",
+      "description": "Food & Drink item 163 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-163",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 17.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 112,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-164",
+      "id": "SKU-164",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-164",
+      "gtin": "0500000000164",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 164",
+      "description": "Homeware item 164 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-164",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 21.24
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 113,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-165",
+      "id": "SKU-165",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-165",
+      "gtin": "0500000000165",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 165",
+      "description": "Tech item 165 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-165",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 24.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 114,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-166",
+      "id": "SKU-166",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-166",
+      "gtin": "0500000000166",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 166",
+      "description": "Outerwear item 166 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-166",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 28.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 115,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-167",
+      "id": "SKU-167",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-167",
+      "gtin": "0500000000167",
+      "searchGridEligible": true,
+      "title": "Summit Boot 167",
+      "description": "Footwear item 167 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-167",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 32.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 116,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-168",
+      "id": "SKU-168",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-168",
+      "gtin": "0500000000168",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 168",
+      "description": "Food & Drink item 168 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-168",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 36.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 117,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-169",
+      "id": "SKU-169",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-169",
+      "gtin": "0500000000169",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 169",
+      "description": "Homeware item 169 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-169",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 39.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 118,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-170",
+      "id": "SKU-170",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-170",
+      "gtin": "0500000000170",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 170",
+      "description": "Tech item 170 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-170",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 43.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 119,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-171",
+      "id": "SKU-171",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-171",
+      "gtin": "0500000000171",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 171",
+      "description": "Outerwear item 171 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-171",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 47.49
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 120,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-172",
+      "id": "SKU-172",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-172",
+      "gtin": "0500000000172",
+      "searchGridEligible": true,
+      "title": "Summit Boot 172",
+      "description": "Footwear item 172 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-172",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 51.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 121,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-173",
+      "id": "SKU-173",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-173",
+      "gtin": "0500000000173",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 173",
+      "description": "Food & Drink item 173 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-173",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 54.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 122,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-174",
+      "id": "SKU-174",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-174",
+      "gtin": "0500000000174",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 174",
+      "description": "Homeware item 174 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-174",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 58.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 123,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-175",
+      "id": "SKU-175",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-175",
+      "gtin": "0500000000175",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 175",
+      "description": "Tech item 175 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-175",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 62.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 124,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-176",
+      "id": "SKU-176",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-176",
+      "gtin": "0500000000176",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 176",
+      "description": "Outerwear item 176 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-176",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 66.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 125,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-177",
+      "id": "SKU-177",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-177",
+      "gtin": "0500000000177",
+      "searchGridEligible": true,
+      "title": "Summit Boot 177",
+      "description": "Footwear item 177 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-177",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 69.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 126,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-178",
+      "id": "SKU-178",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-178",
+      "gtin": "0500000000178",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 178",
+      "description": "Food & Drink item 178 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-178",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 73.74
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 127,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-179",
+      "id": "SKU-179",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-179",
+      "gtin": "0500000000179",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 179",
+      "description": "Homeware item 179 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-179",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 77.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 128,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-180",
+      "id": "SKU-180",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-180",
+      "gtin": "0500000000180",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 180",
+      "description": "Tech item 180 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-180",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 81.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 129,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-181",
+      "id": "SKU-181",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-181",
+      "gtin": "0500000000181",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 181",
+      "description": "Outerwear item 181 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-181",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 9.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 130,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-182",
+      "id": "SKU-182",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-182",
+      "gtin": "0500000000182",
+      "searchGridEligible": true,
+      "title": "Summit Boot 182",
+      "description": "Footwear item 182 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-182",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 13.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 131,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-183",
+      "id": "SKU-183",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-183",
+      "gtin": "0500000000183",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 183",
+      "description": "Food & Drink item 183 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-183",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 17.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 132,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-184",
+      "id": "SKU-184",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-184",
+      "gtin": "0500000000184",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 184",
+      "description": "Homeware item 184 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-184",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 21.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 133,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-185",
+      "id": "SKU-185",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-185",
+      "gtin": "0500000000185",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 185",
+      "description": "Tech item 185 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-185",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 24.99
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 134,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-186",
+      "id": "SKU-186",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-186",
+      "gtin": "0500000000186",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 186",
+      "description": "Outerwear item 186 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-186",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 28.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 135,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-187",
+      "id": "SKU-187",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-187",
+      "gtin": "0500000000187",
+      "searchGridEligible": true,
+      "title": "Summit Boot 187",
+      "description": "Footwear item 187 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-187",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 32.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 136,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-188",
+      "id": "SKU-188",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-188",
+      "gtin": "0500000000188",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 188",
+      "description": "Food & Drink item 188 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-188",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 36.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 137,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-189",
+      "id": "SKU-189",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-189",
+      "gtin": "0500000000189",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 189",
+      "description": "Homeware item 189 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-189",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 39.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 138,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-190",
+      "id": "SKU-190",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-190",
+      "gtin": "0500000000190",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 190",
+      "description": "Tech item 190 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-190",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 43.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 139,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-191",
+      "id": "SKU-191",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-191",
+      "gtin": "0500000000191",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 191",
+      "description": "Outerwear item 191 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-191",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 47.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 140,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-192",
+      "id": "SKU-192",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-192",
+      "gtin": "0500000000192",
+      "searchGridEligible": true,
+      "title": "Summit Boot 192",
+      "description": "Footwear item 192 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-192",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 51.24
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 141,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-193",
+      "id": "SKU-193",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-193",
+      "gtin": "0500000000193",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 193",
+      "description": "Food & Drink item 193 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-193",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 54.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 142,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-194",
+      "id": "SKU-194",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-194",
+      "gtin": "0500000000194",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 194",
+      "description": "Homeware item 194 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-194",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 58.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 143,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-195",
+      "id": "SKU-195",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-195",
+      "gtin": "0500000000195",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 195",
+      "description": "Tech item 195 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-195",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 62.49
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 144,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-196",
+      "id": "SKU-196",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-196",
+      "gtin": "0500000000196",
+      "searchGridEligible": true,
+      "title": "Trail Ridge Shell 196",
+      "description": "Outerwear item 196 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Clothing > Jackets",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Contoso Trail"
+      ],
+      "uri": "https://store.example/products/SKU-196",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 66.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 145,
+      "attributes": {
+        "color": {
+          "text": [
+            "ember rose"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Outerwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "outerwear",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-jacket.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-197",
+      "id": "SKU-197",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-197",
+      "gtin": "0500000000197",
+      "searchGridEligible": true,
+      "title": "Summit Boot 197",
+      "description": "Footwear item 197 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Outdoor > Footwear > Boots",
+        "Outdoor > Hiking"
+      ],
+      "brands": [
+        "Litware"
+      ],
+      "uri": "https://store.example/products/SKU-197",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 69.99
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 146,
+      "attributes": {
+        "color": {
+          "text": [
+            "midnight"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Footwear"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "footwear",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-boots.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-198",
+      "id": "SKU-198",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-198",
+      "gtin": "0500000000198",
+      "searchGridEligible": true,
+      "title": "Morning Roast Pack 198",
+      "description": "Food & Drink item 198 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Grocery > Drinks > Coffee",
+        "Grocery > Pantry"
+      ],
+      "brands": [
+        "Fabrikam"
+      ],
+      "uri": "https://store.example/products/SKU-198",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 73.74
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 147,
+      "attributes": {
+        "color": {
+          "text": [
+            "forest"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Food & Drink"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "food & drink",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-coffee.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-199",
+      "id": "SKU-199",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-199",
+      "gtin": "0500000000199",
+      "searchGridEligible": true,
+      "title": "Kitchen Stack Box 199",
+      "description": "Homeware item 199 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Home > Kitchen > Storage",
+        "Home > Organization"
+      ],
+      "brands": [
+        "Northwind"
+      ],
+      "uri": "https://store.example/products/SKU-199",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 77.49
+      },
+      "availability": "LOW_STOCK",
+      "availableQuantity": 148,
+      "attributes": {
+        "color": {
+          "text": [
+            "stone"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Homeware"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "homeware",
+        "standard"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-kitchen-box.jpg"
+        }
+      ]
+    },
+    {
+      "name": "projects/demo/locations/global/catalogs/default_catalog/branches/default_branch/products/SKU-200",
+      "id": "SKU-200",
+      "type": "PRIMARY",
+      "primaryProductId": "SKU-200",
+      "gtin": "0500000000200",
+      "searchGridEligible": true,
+      "title": "Pulse Headphones 200",
+      "description": "Tech item 200 for everyday retail browsing and search.",
+      "languageCode": "en-GB",
+      "categories": [
+        "Electronics > Audio > Headphones",
+        "Electronics > Accessories"
+      ],
+      "brands": [
+        "Adventure Works"
+      ],
+      "uri": "https://store.example/products/SKU-200",
+      "priceInfo": {
+        "currencyCode": "GBP",
+        "price": 81.24
+      },
+      "availability": "IN_STOCK",
+      "availableQuantity": 149,
+      "attributes": {
+        "color": {
+          "text": [
+            "cobalt"
+          ],
+          "searchable": true,
+          "indexable": true
+        },
+        "family": {
+          "text": [
+            "Tech"
+          ],
+          "searchable": true,
+          "indexable": true
+        }
+      },
+      "sizes": [
+        "One Size"
+      ],
+      "conditions": [
+        "new"
+      ],
+      "tags": [
+        "tech",
+        "featured"
+      ],
+      "images": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "uri": "/static/images/product-headphones.jpg"
+        }
+      ]
     }
   ],
   "inventory": [
@@ -258,12 +6248,25 @@
         "originalPrice": 169.99
       },
       "attributes": {
-        "aisle": { "text": ["outdoor-2"], "indexable": true },
-        "displayPriority": { "numbers": [1], "indexable": true }
+        "aisle": {
+          "text": [
+            "outdoor-2"
+          ],
+          "indexable": true
+        },
+        "displayPriority": {
+          "numbers": [
+            1
+          ],
+          "indexable": true
+        }
       },
       "availableQuantity": 6,
       "availability": "IN_STOCK",
-      "fulfillmentTypes": ["pickup-in-store", "ship-to-home"],
+      "fulfillmentTypes": [
+        "pickup-in-store",
+        "ship-to-home"
+      ],
       "updateTime": "2026-06-22T11:00:00Z"
     }
   ],
@@ -278,8 +6281,12 @@
       "servingConfigId": "default-search",
       "channel": "web",
       "query": "waterproof jacket",
-      "pageCategories": ["Outdoor > Clothing > Jackets"],
-      "productIds": ["SKU-001"],
+      "pageCategories": [
+        "Outdoor > Clothing > Jackets"
+      ],
+      "productIds": [
+        "SKU-001"
+      ],
       "productDetails": [
         {
           "productId": "SKU-001",
@@ -298,7 +6305,9 @@
       "placement": "search",
       "servingConfigId": "default-search",
       "channel": "web",
-      "productIds": ["SKU-001-M-ROSE"],
+      "productIds": [
+        "SKU-001-M-ROSE"
+      ],
       "productDetails": [
         {
           "productId": "SKU-001-M-ROSE",
@@ -319,7 +6328,9 @@
       "placement": "checkout",
       "servingConfigId": "checkout-cross-sell",
       "channel": "web",
-      "productIds": ["SKU-001-M-ROSE"],
+      "productIds": [
+        "SKU-001-M-ROSE"
+      ],
       "transactionInfo": {
         "transactionId": "order-1001",
         "value": 129.99,
@@ -344,7 +6355,9 @@
       "id": "boost-waterproof-contoso",
       "placement": "search",
       "condition": {
-        "queryContains": ["waterproof"],
+        "queryContains": [
+          "waterproof"
+        ],
         "category": "Outdoor > Clothing > Jackets"
       },
       "actions": {
@@ -383,7 +6396,9 @@
         "businessRulesWeight": 0.4,
         "availabilityWeight": 0.25
       },
-      "ruleIds": ["boost-waterproof-contoso"],
+      "ruleIds": [
+        "boost-waterproof-contoso"
+      ],
       "questionFlowId": "outdoor-clarifier"
     },
     {
@@ -402,7 +6417,12 @@
     {
       "id": "outdoor-clarifier",
       "trigger": {
-        "queryContainsAny": ["jacket", "boots", "waterproof"],
+        "queryContainsAny": [
+          "jacket",
+          "boots",
+          "shoes",
+          "waterproof"
+        ],
         "lowConfidenceBelow": 0.55
       },
       "questions": [
@@ -410,14 +6430,24 @@
           "id": "activity",
           "text": "What are you using it for?",
           "type": "single_select",
-          "options": ["hiking", "running", "commuting", "camping"],
+          "options": [
+            "hiking",
+            "running",
+            "commuting",
+            "camping"
+          ],
           "writesPreference": "activity"
         },
         {
           "id": "weather",
           "text": "What weather do you need it for?",
           "type": "single_select",
-          "options": ["heavy rain", "cold", "wind", "mixed conditions"],
+          "options": [
+            "heavy rain",
+            "cold",
+            "wind",
+            "mixed conditions"
+          ],
           "writesPreference": "weather"
         }
       ]
@@ -458,8 +6488,20 @@
       "name": "commerce-query-understanding",
       "version": "v0"
     },
-    "intentTypes": ["product_search", "category_browse", "compatibility_question", "recommendation_request"],
-    "entityTypes": ["category", "brand", "attribute", "activity", "weather", "price_band"]
+    "intentTypes": [
+      "product_search",
+      "category_browse",
+      "compatibility_question",
+      "recommendation_request"
+    ],
+    "entityTypes": [
+      "category",
+      "brand",
+      "attribute",
+      "activity",
+      "weather",
+      "price_band"
+    ]
   },
   "kpis": [
     {
@@ -467,14 +6509,21 @@
       "placement": "search",
       "metric": "revenue_per_search",
       "target": 4.25,
-      "guardrails": ["p95_latency_ms", "zero_result_rate", "conversion_rate"]
+      "guardrails": [
+        "p95_latency_ms",
+        "zero_result_rate",
+        "conversion_rate"
+      ]
     },
     {
       "id": "recommend-conversion",
       "placement": "recommend",
       "metric": "conversion_rate",
       "target": 0.08,
-      "guardrails": ["availability_rate", "diversity"]
+      "guardrails": [
+        "availability_rate",
+        "diversity"
+      ]
     }
   ],
   "migration": {
@@ -564,10 +6613,18 @@
   },
   "synonyms": [
     {
-      "terms": ["waterproof", "rainproof", "weatherproof"]
+      "terms": [
+        "waterproof",
+        "rainproof",
+        "weatherproof"
+      ]
     },
     {
-      "terms": ["trainers", "sneakers", "running shoes"]
+      "terms": [
+        "trainers",
+        "sneakers",
+        "running shoes"
+      ]
     }
   ]
 }

@@ -44,28 +44,49 @@
     <div id="landingView">
 
       <!-- Hero welcome -->
-      <div class="p-4 p-md-5 mb-4 rounded bg-body-tertiary">
+      <div class="p-4 p-md-5 mb-4 rounded position-relative overflow-hidden" style="background: linear-gradient(135deg,#2d0f5e 0%,#593196 55%,#e06c00 100%);">
         <div class="row align-items-center">
           <div class="col-lg-7">
-            <h1 class="display-5 fw-bold">Welcome to WaveStore</h1>
-            <p class="lead text-body-secondary">Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.</p>
+            <h1 class="display-5 fw-bold text-white">Welcome to WaveStore</h1>
+            <p class="lead text-white opacity-75">Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.</p>
           </div>
           <div class="col-lg-5 text-center">
-            <svg viewBox="0 0 120 120" width="140" height="140" aria-hidden="true">
-              <rect x="5" y="5" width="110" height="110" rx="24" fill="#593196" opacity=".1"/>
-              <circle cx="42" cy="50" r="14" fill="#593196" opacity=".6"/>
-              <rect x="62" y="38" width="30" height="24" rx="6" fill="#593196" opacity=".4"/>
-              <rect x="30" y="74" width="60" height="14" rx="7" fill="#593196" opacity=".25"/>
-            </svg>
+            <img src="/static/images/wavestore-hero.jpg" alt="WaveStore" class="img-fluid rounded shadow" style="max-height:180px;object-fit:cover;">
           </div>
         </div>
       </div>
 
-      <!-- Offers carousel -->
+      <!-- Static AI-generated offer banners (shown before catalogue loads) -->
       <h5 class="mb-3">Featured offers</h5>
       <div id="carouselOffers" class="carousel slide mb-4" data-bs-ride="carousel">
-        <div class="carousel-indicators" id="carouselIndicators"></div>
-        <div class="carousel-inner rounded" id="carouselInner"></div>
+        <div class="carousel-indicators">
+          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="0" class="active"></button>
+          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="1"></button>
+          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="2"></button>
+        </div>
+        <div class="carousel-inner rounded" id="carouselInner">
+          <div class="carousel-item active">
+            <img src="/static/images/banner-summer-sale.jpg" class="d-block w-100" alt="Summer Sale" style="max-height:280px;object-fit:cover;">
+            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
+              <h5 class="mb-0">Summer Sale — Up to 40% off</h5>
+              <p class="small mb-0">Outdoor gear, audio &amp; more</p>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <img src="/static/images/banner-new-arrivals.jpg" class="d-block w-100" alt="New Arrivals" style="max-height:280px;object-fit:cover;">
+            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
+              <h5 class="mb-0">New Arrivals This Week</h5>
+              <p class="small mb-0">Fresh picks from top brands</p>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <img src="/static/images/banner-free-delivery.jpg" class="d-block w-100" alt="Free Delivery" style="max-height:280px;object-fit:cover;">
+            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
+              <h5 class="mb-0">Free Next-Day Delivery</h5>
+              <p class="small mb-0">On orders over £40</p>
+            </div>
+          </div>
+        </div>
         <button class="carousel-control-prev" type="button" data-bs-target="#carouselOffers" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
         <button class="carousel-control-next" type="button" data-bs-target="#carouselOffers" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
       </div>
