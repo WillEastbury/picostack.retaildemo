@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from retail_v2.blob_store import AzureBlobStore, LocalBlobStore
+from retail_v2.blob_store import LocalBlobStore
 from retail_v2.models import TenantContext
 from retail_v2.services import RetailV2Service
 from wave_shared.auth import context_from_auth, require_scope
@@ -21,12 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def create_service() -> RetailV2Service:
     data_root = Path(os.environ.get("WAVESEARCH_BLOB_ROOT") or Path(tempfile.gettempdir()) / "wavesearch-api-blobs")
     catalog_path = Path(os.environ.get("WAVESEARCH_CATALOG") or ROOT / "V2" / "sample-catalog.json")
-    account_url = os.environ.get("WAVESEARCH_AZURE_BLOB_ACCOUNT_URL")
-    container_name = os.environ.get("WAVESEARCH_AZURE_BLOB_CONTAINER") or "wavesearch-api"
-    if account_url:
-        store = AzureBlobStore(account_url=account_url, container_name=container_name, prefix=os.environ.get("WAVESEARCH_AZURE_BLOB_PREFIX", ""))
-    else:
-        store = LocalBlobStore(data_root)
+    store = LocalBlobStore(data_root)
     return RetailV2Service(store, catalog_path)
 
 
