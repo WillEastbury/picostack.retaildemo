@@ -17,12 +17,77 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
-        html = f"""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>WaveStore ERP Frontend</title><link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css'></head><body><div class='container py-4'>
-<h1>WaveStore ERP</h1><p class='text-body-secondary'>GUI for Orders, Invoices, Products, Stock, Offers, Pricing, Customers.</p>
-<div class='card mb-3'><div class='card-body row g-2'><div class='col-md-3'><input id='tenant' class='form-control' value='demo-tenant'></div><div class='col-md-3'><input id='user' class='form-control' value='erp.admin'></div><div class='col-md-3'><button id='signIn' class='btn btn-primary w-100'>Sign in</button></div><div class='col-md-3 text-body-secondary d-flex align-items-center' id='authState'>Signed out</div></div></div>
-<div class='row g-3'><div class='col-lg-6'><div class='card'><div class='card-header'>Product / Stock / Pricing / Offers / Customer upsert</div><div class='card-body'><textarea id='payload' class='form-control mb-2' rows='8'>{{"id":"SKU-ENTERPRISE-001","title":"Enterprise Demo Product","categories":["Demo"],"brands":["WaveStore"],"price":19.99,"availableQuantity":20}}</textarea><div class='d-grid gap-2'><button class='btn btn-outline-primary' data-act='products'>Upsert Product</button><button class='btn btn-outline-primary' data-act='stock'>Set Stock</button><button class='btn btn-outline-primary' data-act='pricing'>Set Pricing</button><button class='btn btn-outline-primary' data-act='offers'>Upsert Offer</button><button class='btn btn-outline-primary' data-act='customers'>Upsert Customer</button></div></div></div></div>
-<div class='col-lg-6'><div class='card'><div class='card-header'>Query</div><div class='card-body d-grid gap-2'><button class='btn btn-secondary' data-get='products'>List Products</button><button class='btn btn-secondary' data-get='stock'>List Stock</button><button class='btn btn-secondary' data-get='pricing'>List Pricing</button><button class='btn btn-secondary' data-get='offers'>List Offers</button><button class='btn btn-secondary' data-get='customers'>List Customers</button><button class='btn btn-secondary' data-get='orders'>List Orders</button><button class='btn btn-secondary' data-get='invoices'>List Invoices</button></div></div></div></div>
-<div class='card mt-3'><div class='card-header'>Output</div><div class='card-body'><pre id='out' class='mb-0' style='max-height:360px;overflow:auto'></pre></div></div>
+        html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>WaveStore ERP</title>
+  <style>
+    :root {{ --bg:#111; --panel:#1d1d1d; --soft:#171717; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; --accent-soft:#3a2028; }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }}
+    .wrap {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+    .top {{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }}
+    .brand {{ font-size:28px; font-weight:900; letter-spacing:-.04em; }}
+    .panel {{ background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }}
+    .muted {{ color: var(--muted); }}
+    .grid {{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }}
+    .stack {{ display:grid; gap:8px; }}
+    input, textarea {{ width:100%; border:1px solid #444; border-radius:10px; padding:12px; background:var(--soft); color:var(--text); }}
+    textarea {{ min-height:180px; font-family: Consolas, "Courier New", Courier, monospace; }}
+    button {{ border:0; border-radius:10px; padding:11px 14px; background:var(--accent); color:#171717; font-weight:800; cursor:pointer; }}
+    button.secondary {{ background:#2a2a2a; color:var(--text); border:1px solid #444; }}
+    pre {{ margin:0; max-height:360px; overflow:auto; background:#0b0b0b; border:1px solid var(--line); border-radius:12px; padding:10px; color:var(--muted); }}
+    @media (max-width: 980px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+  </style>
+</head>
+<body>
+<div class='wrap'>
+  <div class='top'>
+    <div>
+      <div class='brand'>WaveStore ERP</div>
+      <div class='muted'>WaveFunction-style admin UI for products, stock, pricing, offers, customers, orders, and invoices.</div>
+    </div>
+    <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
+      <input id='tenant' value='demo-tenant'>
+      <input id='user' value='erp.admin'>
+      <button id='signIn'>Sign in</button>
+      <span id='authState' class='muted'>Signed out</span>
+    </div>
+  </div>
+
+  <div class='grid'>
+    <div class='panel'>
+      <h3>Upsert commands</h3>
+      <textarea id='payload'>{{"id":"SKU-ENTERPRISE-001","title":"Enterprise Demo Product","categories":["Demo"],"brands":["WaveStore"],"price":19.99,"availableQuantity":20}}</textarea>
+      <div class='stack' style='margin-top:10px; grid-template-columns:1fr 1fr;'>
+        <button data-act='products'>Upsert Product</button>
+        <button data-act='stock'>Set Stock</button>
+        <button data-act='pricing'>Set Pricing</button>
+        <button data-act='offers'>Upsert Offer</button>
+        <button data-act='customers'>Upsert Customer</button>
+      </div>
+    </div>
+
+    <div class='panel'>
+      <h3>Queries</h3>
+      <div class='stack' style='grid-template-columns:1fr 1fr;'>
+        <button class='secondary' data-get='products'>List Products</button>
+        <button class='secondary' data-get='stock'>List Stock</button>
+        <button class='secondary' data-get='pricing'>List Pricing</button>
+        <button class='secondary' data-get='offers'>List Offers</button>
+        <button class='secondary' data-get='customers'>List Customers</button>
+        <button class='secondary' data-get='orders'>List Orders</button>
+        <button class='secondary' data-get='invoices'>List Invoices</button>
+      </div>
+    </div>
+  </div>
+
+  <div class='panel' style='margin-top:12px;'>
+    <h3>Output</h3>
+    <pre id='out'></pre>
+  </div>
 </div>
 <script>
 const cfg={{sts:'{sts}',erp:'{erp_api}'}};let token='';

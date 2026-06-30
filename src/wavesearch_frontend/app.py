@@ -259,12 +259,79 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
-        html = f"""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>WaveSearch Labs</title><link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css'></head><body><div class='container py-4'>
-<h1>WaveSearch Labs</h1><p class='text-body-secondary'>Boost/bury controls, promotions, facets, analytics, click-through stats.</p><p><a href='/platform-guide' target='_blank' rel='noopener'>Open indexing/search/recommendations architecture guide</a></p>
-<div class='card mb-3'><div class='card-body row g-2'><div class='col-md-3'><input id='tenant' class='form-control' value='demo-tenant'></div><div class='col-md-3'><input id='user' class='form-control' value='search.admin'></div><div class='col-md-3'><button id='signIn' class='btn btn-primary w-100'>Sign in</button></div><div class='col-md-3 text-body-secondary d-flex align-items-center' id='authState'>Signed out</div></div></div>
-<div class='row g-3'><div class='col-lg-6'><div class='card'><div class='card-header'>Ingestion + query test</div><div class='card-body d-grid gap-2'><button id='ingestFromErp' class='btn btn-outline-primary'>Ingest catalog from ERP</button><input id='query' class='form-control' value='jacket'><button id='runQuery' class='btn btn-outline-primary'>Run search query</button></div></div></div>
-<div class='col-lg-6'><div class='card'><div class='card-header'>Controls</div><div class='card-body'><textarea id='rule' class='form-control mb-2' rows='6'>{{"id":"boost-wave-enterprise","actions":{{"boost":[{{"productId":"SKU-ENTERPRISE-001"}}],"bury":[{{"productId":"SKU-LOW-001"}}]}}}}</textarea><button id='saveRule' class='btn btn-outline-primary w-100'>Save boost/bury rule</button></div></div></div></div>
-<div class='row g-3 mt-1'><div class='col-lg-6'><div class='card'><div class='card-header'>Analytics</div><div class='card-body d-grid gap-2'><button id='loadAnalytics' class='btn btn-secondary'>Load user analytics & clickthrough stats</button><button id='loadConfig' class='btn btn-secondary'>Load promotions/facets config</button></div></div></div><div class='col-lg-6'><div class='card'><div class='card-header'>Output</div><div class='card-body'><pre id='out' style='max-height:360px;overflow:auto' class='mb-0'></pre></div></div></div></div>
+        html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>WaveSearch Labs</title>
+  <style>
+    :root {{ --bg:#111; --panel:#1d1d1d; --soft:#171717; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; --accent-soft:#3a2028; }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }}
+    .wrap {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+    .top {{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }}
+    .brand {{ font-size:28px; font-weight:900; letter-spacing:-.04em; }}
+    .panel {{ background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }}
+    .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
+    .muted {{ color: var(--muted); }}
+    .stack {{ display:grid; gap:8px; }}
+    input, textarea {{ width:100%; border:1px solid #444; border-radius:10px; padding:12px; background:var(--soft); color:var(--text); }}
+    textarea {{ min-height:130px; font-family: Consolas, "Courier New", Courier, monospace; }}
+    button {{ border:0; border-radius:10px; padding:11px 14px; background:var(--accent); color:#171717; font-weight:800; cursor:pointer; }}
+    button.secondary {{ background:#2a2a2a; color:var(--text); border:1px solid #444; }}
+    pre {{ margin:0; max-height:360px; overflow:auto; background:#0b0b0b; border:1px solid var(--line); border-radius:12px; padding:10px; color:var(--muted); }}
+    a {{ color:var(--accent); text-decoration:none; }}
+    @media (max-width: 980px) {{ .grid {{ grid-template-columns:1fr; }} }}
+  </style>
+</head>
+<body>
+<div class='wrap'>
+  <div class='top'>
+    <div>
+      <div class='brand'>WaveSearch Labs</div>
+      <div class='muted'>Boost/bury controls, promotions, facets, analytics, and click-through stats.</div>
+      <div><a href='/platform-guide' target='_blank' rel='noopener'>Open indexing/search/recommendations architecture guide</a></div>
+    </div>
+    <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
+      <input id='tenant' value='demo-tenant'>
+      <input id='user' value='search.admin'>
+      <button id='signIn'>Sign in</button>
+      <span id='authState' class='muted'>Signed out</span>
+    </div>
+  </div>
+
+  <div class='grid'>
+    <div class='panel'>
+      <h3>Ingestion + Query Test</h3>
+      <div class='stack'>
+        <button id='ingestFromErp'>Ingest catalog from ERP</button>
+        <input id='query' value='jacket'>
+        <button id='runQuery'>Run search query</button>
+      </div>
+    </div>
+    <div class='panel'>
+      <h3>Controls</h3>
+      <textarea id='rule'>{{"id":"boost-wave-enterprise","actions":{{"boost":[{{"productId":"SKU-ENTERPRISE-001"}}],"bury":[{{"productId":"SKU-LOW-001"}}]}}}}</textarea>
+      <div class='stack' style='margin-top:10px;'>
+        <button id='saveRule'>Save boost/bury rule</button>
+      </div>
+    </div>
+  </div>
+
+  <div class='grid' style='margin-top:12px;'>
+    <div class='panel'>
+      <h3>Analytics</h3>
+      <div class='stack'>
+        <button class='secondary' id='loadAnalytics'>Load user analytics & clickthrough stats</button>
+        <button class='secondary' id='loadConfig'>Load promotions/facets config</button>
+      </div>
+    </div>
+    <div class='panel'>
+      <h3>Output</h3>
+      <pre id='out'></pre>
+    </div>
+  </div>
 </div>
 <script>
 const cfg={{sts:'{sts}',search:'{search_api}',erp:'{erp_api}'}};let token='';let erpToken='';
