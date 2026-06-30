@@ -44,6 +44,7 @@ def create_app() -> FastAPI:
       <div class='d-flex align-items-center gap-2'>
         <input id='tenant' class='form-control form-control-sm' style='max-width:170px' value='demo-tenant' placeholder='Tenant'>
         <input id='user' class='form-control form-control-sm' style='max-width:170px' value='wave.shopper' placeholder='User'>
+        <a href='https://orchestrator.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener' class='btn btn-sm btn-outline-secondary'>Demo Orchestrator</a>
         <button id='signIn' class='btn btn-sm btn-primary'>Sign in</button>
         <span id='authState' class='text-body-secondary small'>Signed out</span>
       </div>

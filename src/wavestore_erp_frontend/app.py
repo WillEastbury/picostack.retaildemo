@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
       <input id='tenant' value='demo-tenant'>
       <input id='user' value='erp.admin'>
+      <a href='https://orchestrator.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener' style='text-decoration:none;'><button type='button' class='secondary'>Demo Orchestrator</button></a>
       <button id='signIn'>Sign in</button>
       <span id='authState' class='muted'>Signed out</span>
     </div>

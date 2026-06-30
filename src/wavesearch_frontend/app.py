@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
 
@@ -247,6 +247,109 @@ textarea {
 """
 
 
+def orchestrator_html() -> str:
+    return """<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Wave Retail Demo Orchestrator</title>
+  <style>
+    :root { --bg:#111; --panel:#1d1d1d; --soft:#171717; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; --accent-soft:#3a2028; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .brand { font-size: 34px; font-weight: 900; letter-spacing: -.04em; margin: 0 0 6px; }
+    .muted { color: var(--muted); }
+    .panel { background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+    .card { background: var(--soft); border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .card h3 { margin: 0 0 8px; }
+    .links { display:grid; gap:8px; margin-top:8px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 6px 0; color: var(--muted); }
+    .pill { display:inline-block; margin-right:8px; margin-bottom:8px; background: var(--accent-soft); color: var(--accent); border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
+  </style>
+</head>
+<body>
+<div class='wrap'>
+  <h1 class='brand'>Wave Retail Demo Orchestrator</h1>
+  <p class='muted'>Single landing page for the demo platform: where to go, what each component does, and how indexing/search/recommendations flow through the system.</p>
+  <div>
+    <span class='pill'>Demo-only topology</span>
+    <span class='pill'>AKS wave-dev</span>
+    <span class='pill'>Kaniko in-cluster builds</span>
+    <span class='pill'>STS + scoped JWTs</span>
+  </div>
+
+  <div class='panel' style='margin-top:12px;'>
+    <h2 style='margin-top:0;'>Platform overview</h2>
+    <ul>
+      <li><strong>wave-sts</strong> issues audience-scoped tokens and enforces scope contracts.</li>
+      <li><strong>wavestore-erp-api</strong> is source-of-truth for products, stock, pricing, orders, and catalog export.</li>
+      <li><strong>wavesearch-api</strong> ingests ERP catalog snapshots, rebuilds runtime index, serves search/recommend APIs, and tracks events/analytics.</li>
+      <li><strong>Frontends</strong>: storefront (shopper), ERP admin, and WaveSearch Labs operator UI.</li>
+      <li><strong>Ingress</strong>: all hosts route through one shared nginx ingress public IP.</li>
+    </ul>
+  </div>
+
+  <div class='grid' style='margin-top:12px;'>
+    <div class='card'>
+      <h3>Shopper experience</h3>
+      <p class='muted'>Bootswatch storefront for demo shopping, recommendations, and order placement.</p>
+      <div class='links'>
+        <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>store.retail.demos.wavefunctionlabs.com</a>
+        <a href='https://storefront.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>storefront.retail.demos.wavefunctionlabs.com</a>
+      </div>
+    </div>
+
+    <div class='card'>
+      <h3>ERP admin</h3>
+      <p class='muted'>WaveFunction-style admin UI for catalog, stock, pricing, customers, orders, and invoices.</p>
+      <div class='links'>
+        <a href='https://erp.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp.retail.demos.wavefunctionlabs.com</a>
+        <a href='https://erp-frontend.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp-frontend.retail.demos.wavefunctionlabs.com</a>
+      </div>
+    </div>
+
+    <div class='card'>
+      <h3>Search Labs + platform docs</h3>
+      <p class='muted'>WaveFunction-style control UI for ingestion, merchandising, analytics, plus platform guide.</p>
+      <div class='links'>
+        <a href='https://labs.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs.retail.demos.wavefunctionlabs.com</a>
+        <a href='https://labs-frontend.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs-frontend.retail.demos.wavefunctionlabs.com</a>
+        <a href='/platform-guide' target='_blank' rel='noopener'>/platform-guide</a>
+      </div>
+    </div>
+  </div>
+
+  <div class='grid' style='margin-top:12px;'>
+    <div class='card'>
+      <h3>Service endpoints</h3>
+      <div class='links'>
+        <a href='https://sts.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>STS health</a>
+        <a href='https://search-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>Search API health</a>
+        <a href='https://erp-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>ERP API health</a>
+      </div>
+    </div>
+    <div class='card'>
+      <h3>How data flows</h3>
+      <ul>
+        <li>ERP updates product/stock/pricing state.</li>
+        <li>Labs calls <code>/search/ingest/from-erp</code> to pull ERP catalog export.</li>
+        <li>WaveSearch rebuilds runtime index and serves query/recommend endpoints.</li>
+        <li>Storefront consumes those APIs and posts events back for analytics.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="WaveSearch Labs Frontend")
     sts = os.environ.get("WAVE_STS_URL", "http://127.0.0.1:8801")
@@ -258,7 +361,10 @@ def create_app() -> FastAPI:
         return {"status": "ok", "service": "wavesearch-frontend"}
 
     @app.get("/", response_class=HTMLResponse)
-    async def home() -> HTMLResponse:
+    async def home(request: Request) -> HTMLResponse:
+        host = (request.headers.get("host") or "").split(":")[0].lower()
+        if host == "orchestrator.retail.demos.wavefunctionlabs.com":
+            return HTMLResponse(orchestrator_html())
         html = f"""<!doctype html>
 <html>
 <head>
@@ -291,7 +397,7 @@ def create_app() -> FastAPI:
     <div>
       <div class='brand'>WaveSearch Labs</div>
       <div class='muted'>Boost/bury controls, promotions, facets, analytics, and click-through stats.</div>
-      <div><a href='/platform-guide' target='_blank' rel='noopener'>Open indexing/search/recommendations architecture guide</a></div>
+      <div><a href='/orchestrator' target='_blank' rel='noopener'>Open demo orchestrator</a> · <a href='/platform-guide' target='_blank' rel='noopener'>Open indexing/search/recommendations architecture guide</a></div>
     </div>
     <div class='stack' style='grid-template-columns:1fr 1fr auto auto; align-items:center;'>
       <input id='tenant' value='demo-tenant'>
@@ -349,5 +455,9 @@ document.getElementById('signIn').addEventListener('click',()=>signIn().catch(e=
     @app.get("/platform-guide", response_class=HTMLResponse)
     async def platform_guide() -> HTMLResponse:
         return HTMLResponse(platform_guide_html())
+
+    @app.get("/orchestrator", response_class=HTMLResponse)
+    async def orchestrator() -> HTMLResponse:
+        return HTMLResponse(orchestrator_html())
 
     return app
