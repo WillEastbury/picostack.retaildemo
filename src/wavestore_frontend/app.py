@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from retail_v2.auth import TokenIssuer
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +52,14 @@ def create_app() -> FastAPI:
         return (x_tenant_id or "demo-tenant").strip() or "demo-tenant"
 
     def issue_token(audience: str, tenant: str, subject: str, scopes: list[str]) -> str:
+        local_secret = os.environ.get("WAVE_STS_SECRET")
+        if local_secret:
+            issuer = TokenIssuer(
+                issuer=os.environ.get("WAVE_STS_ISSUER", "wave-sts"),
+                secret=local_secret,
+                audience=audience,
+            )
+            return issuer.issue(subject, tenant, scopes, ttl_seconds=900)
         payload = {"audience": audience, "tenant": tenant, "subject": subject, "scopes": scopes}
         try:
             result = _json_request(f"{sts}/sts/token", method="POST", body=payload, headers={"X-Tenant-Id": tenant})

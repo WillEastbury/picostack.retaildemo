@@ -32,6 +32,11 @@ spec:
           value: "http://wavesearch-api:8803"
         - name: WAVESTORE_ERP_API_URL
           value: "http://wavestore-erp-api:8802"
+        - name: WAVE_STS_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: wave-sts-secret
+              key: secret
         - name: LOG_LEVEL
           value: "info"
         resources:
