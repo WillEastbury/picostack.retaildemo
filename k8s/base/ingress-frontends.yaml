@@ -5,7 +5,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: store.wave.local
+  - host: store.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /sts
@@ -36,7 +36,7 @@ spec:
             name: wavestore-frontend
             port:
               number: 8804
-  - host: erp.wave.local
+  - host: erp.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /sts
@@ -60,7 +60,7 @@ spec:
             name: wavestore-erp-frontend
             port:
               number: 8805
-  - host: labs.wave.local
+  - host: labs.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /sts
@@ -91,7 +91,7 @@ spec:
             name: wavesearch-frontend
             port:
               number: 8806
-  - host: sts.wave.local
+  - host: sts.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
@@ -101,7 +101,7 @@ spec:
             name: wave-sts
             port:
               number: 8801
-  - host: search-api.wave.local
+  - host: search-api.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
@@ -111,7 +111,7 @@ spec:
             name: wavesearch-api
             port:
               number: 8803
-  - host: erp-api.wave.local
+  - host: erp-api.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
@@ -121,7 +121,7 @@ spec:
             name: wavestore-erp-api
             port:
               number: 8802
-  - host: storefront.wave.local
+  - host: storefront.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
@@ -131,7 +131,7 @@ spec:
             name: wavestore-frontend
             port:
               number: 8804
-  - host: erp-frontend.wave.local
+  - host: erp-frontend.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
@@ -141,7 +141,7 @@ spec:
             name: wavestore-erp-frontend
             port:
               number: 8805
-  - host: labs-frontend.wave.local
+  - host: labs-frontend.retail.demos.wavefunctionlabs.com
     http:
       paths:
       - path: /
