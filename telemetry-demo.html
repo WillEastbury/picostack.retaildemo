@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WaveStore</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css">
+</head>
+<body data-page="{{PAGE_MODE}}">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/">WaveStore</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navContent">
+        <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0" role="search" onsubmit="return false">
+          <input id="query" class="form-control form-control-lg" placeholder="Search products, brands, categories..." />
+          <button id="searchBtn" class="btn btn-light ms-2" type="button">Search</button>
+        </form>
+        <ul class="navbar-nav gap-2 align-items-center">
+          <li class="nav-item"><a href="/account" class="btn btn-outline-light btn-sm">Account</a></li>
+          <li class="nav-item"><a href="/basket" class="btn btn-warning btn-sm">Basket <span id="basketCount" class="badge text-bg-dark">0</span></a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Category bar -->
+  <nav class="navbar navbar-expand bg-dark" data-bs-theme="dark">
+    <div class="container overflow-auto">
+      <ul class="navbar-nav flex-nowrap gap-1" id="categoryNav">
+        <li class="nav-item"><span class="nav-link text-body-secondary small">Loading categories...</span></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- PAGE: Home -->
+  <div class="container mt-4 page-mode-home-only d-none">
+
+    <!-- Landing view (default — before any search) -->
+    <div id="landingView">
+
+      <!-- Hero welcome -->
+      <div class="p-4 p-md-5 mb-4 rounded bg-body-tertiary">
+        <div class="row align-items-center">
+          <div class="col-lg-7">
+            <h1 class="display-5 fw-bold">Welcome to WaveStore</h1>
+            <p class="lead text-body-secondary">Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.</p>
+          </div>
+          <div class="col-lg-5 text-center">
+            <svg viewBox="0 0 120 120" width="140" height="140" aria-hidden="true">
+              <rect x="5" y="5" width="110" height="110" rx="24" fill="#593196" opacity=".1"/>
+              <circle cx="42" cy="50" r="14" fill="#593196" opacity=".6"/>
+              <rect x="62" y="38" width="30" height="24" rx="6" fill="#593196" opacity=".4"/>
+              <rect x="30" y="74" width="60" height="14" rx="7" fill="#593196" opacity=".25"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offers carousel -->
+      <h5 class="mb-3">Featured offers</h5>
+      <div id="carouselOffers" class="carousel slide mb-4" data-bs-ride="carousel">
+        <div class="carousel-indicators" id="carouselIndicators"></div>
+        <div class="carousel-inner rounded" id="carouselInner"></div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#carouselOffers" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carouselOffers" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+      </div>
+
+      <!-- Deals grid -->
+      <h5 class="mb-3">Today's deals</h5>
+      <div id="dealsGrid" class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 mb-4"></div>
+
+      <!-- Recommendations -->
+      <h5 class="mb-3">People like you also viewed</h5>
+      <div id="recsRail" class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3 mb-4"></div>
+
+      <!-- Browsing history -->
+      <h5 class="mb-3">Your browsing history</h5>
+      <div id="historyRail" class="d-flex gap-3 overflow-auto pb-3 mb-4"></div>
+    </div>
+
+    <!-- Search results view (shown on search) -->
+    <div id="searchView" class="d-none">
+
+      <!-- Results bar -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <a href="#" class="btn btn-outline-secondary btn-sm me-2" onclick="event.preventDefault(); showLandingView();">← Back to shop</a>
+          <span id="resultStatus" class="text-body-secondary">Loading...</span>
+        </div>
+        <select id="sortFilter" class="form-select form-select-sm w-auto">
+          <option value="relevance">Sort by relevance</option>
+          <option value="priceAsc">Price: low to high</option>
+          <option value="priceDesc">Price: high to low</option>
+          <option value="stockDesc">Stock: high to low</option>
+        </select>
+      </div>
+
+      <!-- Filters + Product grid -->
+      <div class="row">
+
+        <!-- Left: Filters -->
+        <div class="col-lg-3 mb-4">
+          <div class="card">
+            <div class="card-header fw-semibold">Filters</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Category</label>
+                <select id="categoryFilter" class="form-select form-select-sm"><option value="">All categories</option></select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Brand</label>
+                <select id="brandFilter" class="form-select form-select-sm"><option value="">All brands</option></select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Availability</label>
+                <select id="availabilityFilter" class="form-select form-select-sm">
+                  <option value="">Any</option>
+                  <option value="IN_STOCK">In stock</option>
+                  <option value="LOW_STOCK">Low stock</option>
+                  <option value="OUT_OF_STOCK">Out of stock</option>
+                </select>
+              </div>
+              <hr>
+              <label class="form-label small fw-semibold">Price range</label>
+              <div class="row g-2 mb-3">
+                <div class="col-6"><input id="minPrice" class="form-control form-control-sm" type="number" min="0" placeholder="Min" /></div>
+                <div class="col-6"><input id="maxPrice" class="form-control form-control-sm" type="number" min="0" placeholder="Max" /></div>
+              </div>
+              <label class="form-label small fw-semibold">Stock range</label>
+              <div class="row g-2 mb-3">
+                <div class="col-6"><input id="minStock" class="form-control form-control-sm" type="number" min="0" placeholder="Min" /></div>
+                <div class="col-6"><input id="maxStock" class="form-control form-control-sm" type="number" min="0" placeholder="Max" /></div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <div id="facetPanel"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Product grid -->
+        <div class="col-lg-9">
+          <div id="results" class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3"></div>
+          <div id="emptyState" class="alert alert-warning d-none mt-3">No products matched your search.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+  <div class="container mt-4 page-mode-product-only d-none">
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Shop</a></li>
+        <li class="breadcrumb-item active" id="breadcrumbProduct">Product</li>
+      </ol>
+    </nav>
+    <div id="productDetail">
+      <p class="text-body-secondary">Loading product...</p>
+    </div>
+  </div>
+
+  <!-- PAGE: Basket -->
+  <div class="container mt-4 page-mode-basket-only d-none">
+    <h2 class="mb-3">Your basket</h2>
+    <div id="basketPanel"></div>
+    <div class="d-flex gap-2 mt-3">
+      <button id="checkoutBtn" class="btn btn-primary">Proceed to checkout</button>
+      <button id="clearBasketBtn" class="btn btn-outline-danger">Clear basket</button>
+    </div>
+  </div>
+
+  <!-- PAGE: Account -->
+  <div class="container mt-4 page-mode-account-only d-none" id="accountPanel">
+    <h2 class="mb-3">My account</h2>
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Sign in</h5>
+        <div class="row g-2 mb-2">
+          <div class="col-sm-5"><input id="loginTenant" class="form-control form-control-sm" placeholder="Tenant" value="demo-tenant" /></div>
+          <div class="col-sm-5"><input id="loginUser" class="form-control form-control-sm" placeholder="User" value="wave.user" /></div>
+          <div class="col-sm-2 d-grid"><button id="loginBtn" class="btn btn-primary btn-sm">Sign in</button></div>
+        </div>
+        <p id="accountAuthStatus" class="text-body-secondary small mb-0">Signed out</p>
+      </div>
+    </div>
+    <div id="accountOrders"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // --- State ---
+    const tenantId = "demo-tenant";
+    const visitorId = "wave-store-visitor";
+    const state = {
+      catalog: [],
+      catalogById: new Map(),
+      basket: loadJson("wavestore-basket", []),
+      orders: loadJson("wavestore-orders", []),
+      authToken: loadJson("wavestore-auth-token", ""),
+      authUser: loadJson("wavestore-auth-user", ""),
+      authTenant: loadJson("wavestore-auth-tenant", "demo-tenant"),
+    };
+
+    // --- Utilities ---
+    const el = id => document.getElementById(id);
+    const pageMode = document.body.dataset.page || "home";
+    const money = v => `$${Number(v || 0).toFixed(2)}`;
+    const esc = s => String(s || "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+    function loadJson(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key) || ""); } catch { return fallback; }
+    }
+    function saveJson(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+
+    const productPrice = p => Number(p?.price ?? p?.priceInfo?.price ?? p?.raw?.priceInfo?.price ?? 0);
+    const productImage = p => p?.images?.[0]?.uri || "";
+    const productImages = p => (p?.images || []).map(i => i?.uri).filter(Boolean);
+    const productTitle = p => p?.title || "Product";
+    const productBrand = p => p?.brands?.[0] || "";
+    const topCategory = p => (p?.categories?.[0] || "Other").split(">")[0].trim();
+    function normalizeAvailability(p) {
+      const qty = Number(p.availableQuantity || 0);
+      if (qty <= 0) return "OUT_OF_STOCK";
+      if (qty <= 3) return "LOW_STOCK";
+      return "IN_STOCK";
+    }
+
+    // --- Page-mode visibility ---
+    (() => {
+      const map = { home: ["home-only"], product: ["product-only"], basket: ["basket-only"], account: ["account-only"], "admin-sim": ["admin-only"] };
+      for (const suffix of map[pageMode] || map.home) {
+        document.querySelectorAll(`.page-mode-${suffix}`).forEach(el => el.classList.remove("d-none"));
+      }
+    })();
+
+    // --- API ---
+    async function api(path, method = "GET", body = null) {
+      const opts = { method, headers: { "Content-Type": "application/json" } };
+      if (state.authToken) opts.headers.Authorization = `Bearer ${state.authToken}`;
+      else opts.headers["X-Tenant-Id"] = tenantId;
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(path, opts);
+      if (!r.ok) throw new Error(`${method} ${path} -> ${r.status}`);
+      return r.json();
+    }
+
+    // --- Basket ---
+    function basketCount() { return state.basket.reduce((s, i) => s + (i.quantity || 0), 0); }
+    function basketTotal() { return state.basket.reduce((s, i) => s + (i.quantity || 0) * (i.price || 0), 0); }
+    function persistBasket() { saveJson("wavestore-basket", state.basket); renderBasketCount(); }
+
+    function addToBasket(product, qty = 1) {
+      const existing = state.basket.find(i => i.productId === product.id);
+      if (existing) { existing.quantity += qty; }
+      else { state.basket.push({ productId: product.id, title: productTitle(product), price: productPrice(product), quantity: qty, image: productImage(product), category: topCategory(product) }); }
+      state.basket = state.basket.filter(i => i.quantity > 0);
+      persistBasket();
+    }
+    function setQty(productId, qty) {
+      const item = state.basket.find(i => i.productId === productId);
+      if (item) item.quantity = Math.max(0, qty);
+      state.basket = state.basket.filter(i => i.quantity > 0);
+      persistBasket();
+    }
+    function clearBasket() { state.basket = []; persistBasket(); renderBasketPage(); }
+    function checkout() {
+      if (!state.basket.length) return;
+      state.orders.unshift({ orderId: `ORD-${Date.now()}`, placedAt: Date.now(), items: [...state.basket], total: basketTotal() });
+      saveJson("wavestore-orders", state.orders);
+      clearBasket();
+    }
+
+    function renderBasketCount() { el("basketCount").textContent = String(basketCount()); }
+
+    function renderBasketPage() {
+      const panel = el("basketPanel");
+      if (!panel) return;
+      if (!state.basket.length) { panel.innerHTML = '<div class="alert alert-light">Your basket is empty.</div>'; return; }
+      let html = '<div class="list-group">';
+      for (const item of state.basket) {
+        html += `
+          <div class="list-group-item d-flex align-items-center gap-3">
+            ${item.image ? `<img src="${esc(item.image)}" class="rounded" width="56" height="56" alt="">` : '<div class="bg-body-tertiary rounded d-flex align-items-center justify-content-center" style="width:56px;height:56px"><span class="text-body-secondary small">No img</span></div>'}
+            <div class="flex-grow-1">
+              <a href="/product/${esc(item.productId)}" class="fw-semibold text-decoration-none">${esc(item.title)}</a>
+              <div class="text-body-secondary small">${money(item.price)} each</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-outline-secondary btn-sm" onclick="setQty('${esc(item.productId)}', ${item.quantity - 1}); renderBasketPage()">−</button>
+              <span class="fw-semibold">${item.quantity}</span>
+              <button class="btn btn-outline-secondary btn-sm" onclick="setQty('${esc(item.productId)}', ${item.quantity + 1}); renderBasketPage()">+</button>
+            </div>
+            <span class="fw-bold">${money(item.price * item.quantity)}</span>
+          </div>`;
+      }
+      html += '</div>';
+      html += `<div class="card mt-3"><div class="card-body d-flex justify-content-between"><strong>Total</strong><strong>${money(basketTotal())}</strong></div></div>`;
+      panel.innerHTML = html;
+    }
+
+    // --- Filters ---
+    function readFilters() {
+      return {
+        category: el("categoryFilter")?.value || "",
+        brand: el("brandFilter")?.value || "",
+        availability: el("availabilityFilter")?.value || "",
+        sort: el("sortFilter")?.value || "relevance",
+        minPrice: el("minPrice")?.value === "" ? null : Number(el("minPrice").value),
+        maxPrice: el("maxPrice")?.value === "" ? null : Number(el("maxPrice").value),
+        minStock: el("minStock")?.value === "" ? null : Number(el("minStock").value),
+        maxStock: el("maxStock")?.value === "" ? null : Number(el("maxStock").value),
+      };
+    }
+    function matchesFilters(p, f) {
+      if (f.category && !(p.categories || []).some(c => c.toLowerCase().includes(f.category.toLowerCase()))) return false;
+      if (f.brand && !(p.brands || []).some(b => b.toLowerCase().includes(f.brand.toLowerCase()))) return false;
+      if (f.availability && normalizeAvailability(p) !== f.availability) return false;
+      if (f.minPrice !== null && productPrice(p) < f.minPrice) return false;
+      if (f.maxPrice !== null && productPrice(p) > f.maxPrice) return false;
+      if (f.minStock !== null && Number(p.availableQuantity || 0) < f.minStock) return false;
+      if (f.maxStock !== null && Number(p.availableQuantity || 0) > f.maxStock) return false;
+      return true;
+    }
+    function sortProducts(items, sort) {
+      const copy = [...items];
+      switch (sort) {
+        case "priceAsc": return copy.sort((a, b) => productPrice(a) - productPrice(b));
+        case "priceDesc": return copy.sort((a, b) => productPrice(b) - productPrice(a));
+        case "stockDesc": return copy.sort((a, b) => (b.availableQuantity || 0) - (a.availableQuantity || 0));
+        default: return copy.sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+    }
+
+    // --- Facets ---
+    function renderFacets(items) {
+      const panel = el("facetPanel");
+      if (!panel) return;
+      const cats = new Map(), brands = new Map();
+      for (const p of items) {
+        for (const c of p.categories || []) cats.set(c, (cats.get(c) || 0) + 1);
+        for (const b of p.brands || []) brands.set(b, (brands.get(b) || 0) + 1);
+      }
+      function facetList(title, map) {
+        const rows = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+        if (!rows.length) return "";
+        return `<h6 class="small fw-semibold mt-2">${esc(title)}</h6>` +
+          rows.map(([k, v]) => `<div class="d-flex justify-content-between small"><span>${esc(k)}</span><span class="text-body-secondary">${v}</span></div>`).join("");
+      }
+      panel.innerHTML = facetList("Categories", cats) + facetList("Brands", brands);
+    }
+
+    // --- Search & Render ---
+    async function runSearch() {
+      const query = el("query")?.value.trim() || "";
+      const filters = readFilters();
+      el("resultStatus").textContent = "Searching...";
+      try {
+        const resp = await api("/v2/search", "POST", { query, pageSize: 50, filters: {} });
+        let items = (resp.results || []).map(r => r.product || r).filter(Boolean);
+        if (!query) items = state.catalog.slice();
+        items = items.filter(p => matchesFilters(p, filters));
+        items = sortProducts(items, filters.sort);
+        renderResults(items, query);
+      } catch (err) {
+        el("resultStatus").textContent = "Search failed";
+        console.error(err);
+      }
+    }
+
+    function renderResults(items, queryText) {
+      const container = el("results");
+      const empty = el("emptyState");
+      container.innerHTML = "";
+      empty.classList.toggle("d-none", items.length > 0);
+      el("resultStatus").textContent = `${items.length} result${items.length !== 1 ? "s" : ""}${queryText ? ` for "${queryText}"` : ""}`;
+      renderFacets(items);
+      for (const product of items) {
+        const col = document.createElement("div");
+        col.className = "col";
+        const inStock = normalizeAvailability(product) !== "OUT_OF_STOCK";
+        col.innerHTML = `
+          <div class="card h-100">
+            ${productImage(product) ? `<a href="/product/${esc(product.id)}"><img src="${esc(productImage(product))}" class="card-img-top" alt="${esc(productTitle(product))}"></a>` : ""}
+            <div class="card-body d-flex flex-column">
+              <div class="mb-1">${productBrand(product) ? `<span class="badge text-bg-secondary">${esc(productBrand(product))}</span>` : ""}</div>
+              <h6 class="card-title"><a href="/product/${esc(product.id)}" class="text-decoration-none stretched-link">${esc(productTitle(product))}</a></h6>
+              <p class="card-text text-body-secondary small flex-grow-1">${esc((product.description || "").slice(0, 100))}</p>
+              <div class="d-flex justify-content-between align-items-center mt-auto">
+                <span class="fs-5 fw-bold">${money(productPrice(product))}</span>
+                ${inStock
+                  ? `<button type="button" class="btn btn-primary btn-sm" data-add="${esc(product.id)}">Add to basket</button>`
+                  : `<span class="badge text-bg-danger">Out of stock</span>`}
+              </div>
+            </div>
+          </div>`;
+        col.querySelector("[data-add]")?.addEventListener("click", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          addToBasket(product);
+        });
+        container.appendChild(col);
+      }
+    }
+
+    // --- Product Detail Page ---
+    async function renderProductPage() {
+      const id = window.location.pathname.split("/product/")[1];
+      if (!id) return;
+      try {
+        const product = await api(`/v2/catalog/products/${encodeURIComponent(id)}`);
+        recordView(product);
+        el("breadcrumbProduct").textContent = productTitle(product);
+        const inStock = normalizeAvailability(product) !== "OUT_OF_STOCK";
+        const qty = state.basket.find(i => i.productId === product.id)?.quantity || 0;
+
+        // Related products
+        let allProducts = state.catalog;
+        if (!allProducts.length) {
+          const catResp = await api("/v2/catalog/products?offset=0&limit=200");
+          allProducts = catResp.products || [];
+        }
+        const related = allProducts.filter(p => p.id !== product.id && (p.categories || []).some(c => (product.categories || []).includes(c))).slice(0, 6);
+
+        const images = productImages(product);
+        const mainImg = images[0] || "";
+        const thumbs = images.slice(1);
+
+        el("productDetail").innerHTML = `
+          <div class="row">
+            <div class="col-md-5 mb-3">
+              ${mainImg ? `<img src="${esc(mainImg)}" class="img-fluid rounded mb-2" alt="${esc(productTitle(product))}" id="mainProductImg">` : '<div class="bg-body-tertiary rounded d-flex align-items-center justify-content-center mb-2" style="height:300px"><span class="text-body-secondary">No image</span></div>'}
+              ${thumbs.length ? `<div class="d-flex gap-2">${thumbs.map((uri, i) => `<img src="${esc(uri)}" class="rounded border" role="button" width="80" height="60" alt="View ${i + 2}" data-thumb>`).join("")}${mainImg ? `<img src="${esc(mainImg)}" class="rounded border border-primary" role="button" width="80" height="60" alt="View 1" data-thumb>` : ""}</div>` : ""}
+            </div>
+            <div class="col-md-7">
+              <h2>${esc(productTitle(product))}</h2>
+              <div class="mb-2">
+                ${productBrand(product) ? `<span class="badge text-bg-secondary me-1">${esc(productBrand(product))}</span>` : ""}
+                ${(product.categories || []).map(c => `<span class="badge text-bg-light border me-1">${esc(c)}</span>`).join("")}
+              </div>
+              <p class="fs-3 fw-bold text-primary mb-2">${money(productPrice(product))}</p>
+              <p class="text-body-secondary">${esc(product.description || "No description available.")}</p>
+              <dl class="row small mb-3">
+                <dt class="col-sm-4">Availability</dt>
+                <dd class="col-sm-8"><span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${normalizeAvailability(product).replace(/_/g, " ")}</span></dd>
+                <dt class="col-sm-4">Stock</dt>
+                <dd class="col-sm-8">${Number(product.availableQuantity || 0)} units</dd>
+              </dl>
+              ${inStock ? `
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="input-group" id="qtyGroup">
+                    <button class="btn btn-outline-secondary" type="button" id="qtyMinus">−</button>
+                    <input type="number" class="form-control text-center" id="qtyInput" value="${Math.max(1, qty)}" min="1" max="${product.availableQuantity || 99}">
+                    <button class="btn btn-outline-secondary" type="button" id="qtyPlus">+</button>
+                  </div>
+                  <button class="btn btn-primary btn-lg" id="addToBasketBtn">Add to basket</button>
+                </div>
+              ` : '<div class="alert alert-warning">This product is currently out of stock.</div>'}
+              ${qty > 0 ? `<p class="text-success small"><strong>${qty}</strong> already in your basket</p>` : ""}
+            </div>
+          </div>
+          ${related.length ? `
+            <hr class="my-4">
+            <h4>Related products</h4>
+            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3" id="relatedGrid"></div>
+          ` : ""}
+        `;
+
+        // Wire thumbnail clicks
+        document.querySelectorAll("[data-thumb]").forEach(thumb => {
+          thumb.addEventListener("click", () => {
+            const main = el("mainProductImg");
+            if (main) main.src = thumb.src;
+          });
+        });
+
+        // Wire quantity + add-to-basket
+        if (inStock) {
+          const qtyInput = el("qtyInput");
+          el("qtyMinus").addEventListener("click", () => { qtyInput.value = Math.max(1, Number(qtyInput.value) - 1); });
+          el("qtyPlus").addEventListener("click", () => { qtyInput.value = Number(qtyInput.value) + 1; });
+          el("addToBasketBtn").addEventListener("click", () => {
+            addToBasket(product, Number(qtyInput.value));
+            el("addToBasketBtn").textContent = "✓ Added!";
+            el("addToBasketBtn").classList.replace("btn-primary", "btn-success");
+            setTimeout(() => { el("addToBasketBtn").textContent = "Add to basket"; el("addToBasketBtn").classList.replace("btn-success", "btn-primary"); }, 1500);
+          });
+        }
+
+        // Render related
+        const relGrid = el("relatedGrid");
+        if (relGrid) {
+          for (const rp of related) {
+            const col = document.createElement("div");
+            col.className = "col";
+            col.innerHTML = `
+              <a href="/product/${esc(rp.id)}" class="card h-100 text-decoration-none">
+                ${productImage(rp) ? `<img src="${esc(productImage(rp))}" class="card-img-top" alt="">` : ""}
+                <div class="card-body p-2">
+                  <div class="small fw-semibold">${esc(productTitle(rp))}</div>
+                  <div class="small text-primary fw-bold">${money(productPrice(rp))}</div>
+                </div>
+              </a>`;
+            relGrid.appendChild(col);
+          }
+        }
+      } catch (err) {
+        el("productDetail").innerHTML = `<div class="alert alert-danger">Product not found.</div>`;
+        console.error(err);
+      }
+    }
+
+    // --- Account ---
+    async function loginWithSts() {
+      const tenant = el("loginTenant").value.trim() || "demo-tenant";
+      const user = el("loginUser").value.trim() || "wave.user";
+      const resp = await fetch("/v2/auth/token", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenant, subject: user, scopes: ["search.query", "events.write"] }) });
+      if (!resp.ok) throw new Error("Login failed");
+      const data = await resp.json();
+      state.authToken = data.access_token || "";
+      state.authUser = user;
+      state.authTenant = tenant;
+      saveJson("wavestore-auth-token", state.authToken);
+      saveJson("wavestore-auth-user", state.authUser);
+      saveJson("wavestore-auth-tenant", state.authTenant);
+      el("accountAuthStatus").textContent = `Signed in as ${user}`;
+    }
+
+    // --- Filter population ---
+    function populateFilters() {
+      const cats = new Set(), brands = new Set();
+      for (const p of state.catalog) {
+        for (const c of p.categories || []) cats.add(c);
+        for (const b of p.brands || []) brands.add(b);
+      }
+      fillSelect("categoryFilter", [...cats].sort());
+      fillSelect("brandFilter", [...brands].sort());
+      renderCategoryNav([...cats].sort());
+    }
+
+    function renderCategoryNav(categories) {
+      const nav = el("categoryNav");
+      if (!nav) return;
+      nav.innerHTML = "";
+      const allLink = document.createElement("li");
+      allLink.className = "nav-item";
+      allLink.innerHTML = `<a class="nav-link active" href="#">All</a>`;
+      allLink.querySelector("a").addEventListener("click", e => { e.preventDefault(); searchByCategory(""); });
+      nav.appendChild(allLink);
+      for (const cat of categories) {
+        const label = cat.split(">").pop().trim() || cat;
+        const li = document.createElement("li");
+        li.className = "nav-item";
+        li.innerHTML = `<a class="nav-link text-nowrap" href="#">${esc(label)}</a>`;
+        li.querySelector("a").addEventListener("click", e => { e.preventDefault(); searchByCategory(cat); });
+        nav.appendChild(li);
+      }
+    }
+
+    function searchByCategory(cat) {
+      if (pageMode !== "home") {
+        window.location.href = `/?category=${encodeURIComponent(cat)}`;
+        return;
+      }
+      const catFilter = el("categoryFilter");
+      if (catFilter) catFilter.value = cat;
+      el("query").value = "";
+      showSearchView();
+      runSearch();
+      el("categoryNav").querySelectorAll(".nav-link").forEach(link => {
+        link.classList.toggle("active", (cat === "" && link.textContent === "All") || link.textContent.trim() === (cat.split(">").pop().trim() || cat));
+      });
+    }
+
+    function showSearchView() {
+      const landing = el("landingView");
+      const search = el("searchView");
+      if (landing) landing.classList.add("d-none");
+      if (search) search.classList.remove("d-none");
+    }
+
+    function showLandingView() {
+      const landing = el("landingView");
+      const search = el("searchView");
+      if (landing) landing.classList.remove("d-none");
+      if (search) search.classList.add("d-none");
+    }
+    function fillSelect(id, values) {
+      const sel = el(id); if (!sel) return;
+      const lbl = sel.options[0]?.textContent || "";
+      sel.innerHTML = `<option value="">${esc(lbl)}</option>` + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    }
+
+    // --- Init ---
+    async function loadCatalog() {
+      const data = await api("/v2/catalog/products?offset=0&limit=1000");
+      state.catalog = data.products || [];
+      state.catalogById = new Map(state.catalog.map(p => [p.id, p]));
+      populateFilters();
+      await runSearch();
+    }
+
+    // --- Deals Grid ---
+    function renderDealsGrid() {
+      const grid = el("dealsGrid");
+      if (!grid) return;
+      const items = state.catalog.slice(0, 8);
+      if (!items.length) { grid.innerHTML = '<div class="col"><p class="text-body-secondary">Deals will appear once the catalogue loads.</p></div>'; return; }
+      grid.innerHTML = "";
+      for (const p of items) {
+        const inStock = normalizeAvailability(p) !== "OUT_OF_STOCK";
+        const col = document.createElement("div");
+        col.className = "col";
+        col.innerHTML = `
+          <a href="/product/${esc(p.id)}" class="card h-100 text-decoration-none">
+            ${productImage(p) ? `<img src="${esc(productImage(p))}" class="card-img-top" alt="">` : ""}
+            <div class="card-body">
+              <h6 class="card-title">${esc(productTitle(p))}</h6>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fs-5 fw-bold text-primary">${money(productPrice(p))}</span>
+                ${inStock ? '<span class="badge text-bg-success">In stock</span>' : '<span class="badge text-bg-danger">Out of stock</span>'}
+              </div>
+            </div>
+          </a>`;
+        grid.appendChild(col);
+      }
+    }
+
+    // --- Offers Carousel ---
+    function renderCarousel() {
+      const inner = el("carouselInner");
+      const indicators = el("carouselIndicators");
+      if (!inner || !indicators) return;
+      const items = state.catalog.filter(p => normalizeAvailability(p) === "IN_STOCK").slice(0, 5);
+      if (!items.length) { inner.innerHTML = '<div class="carousel-item active"><div class="p-5 text-center bg-body-tertiary rounded"><h4>Welcome to WaveStore</h4><p class="text-body-secondary">Offers loading...</p></div></div>'; return; }
+      inner.innerHTML = "";
+      indicators.innerHTML = "";
+      items.forEach((p, i) => {
+        indicators.innerHTML += `<button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="${i}" ${i === 0 ? 'class="active"' : ""}></button>`;
+        const slide = document.createElement("div");
+        slide.className = `carousel-item${i === 0 ? " active" : ""}`;
+        slide.innerHTML = `
+          <a href="/product/${esc(p.id)}" class="text-decoration-none">
+            <div class="row g-0 bg-body-tertiary rounded overflow-hidden">
+              <div class="col-md-5 d-flex align-items-center justify-content-center p-4">
+                ${productImage(p) ? `<img src="${esc(productImage(p))}" class="img-fluid rounded" alt="">` : '<div class="text-body-secondary">No image</div>'}
+              </div>
+              <div class="col-md-7 d-flex align-items-center">
+                <div class="p-4">
+                  <span class="badge text-bg-primary mb-2">Featured</span>
+                  <h3>${esc(productTitle(p))}</h3>
+                  <p class="text-body-secondary">${esc((p.description || "").slice(0, 120))}</p>
+                  <span class="fs-4 fw-bold text-primary">${money(productPrice(p))}</span>
+                </div>
+              </div>
+            </div>
+          </a>`;
+        inner.appendChild(slide);
+      });
+    }
+
+    // --- Browsing History ---
+    const browsingHistory = loadJson("wavestore-history", []);
+
+    function recordView(product) {
+      const entry = { id: product.id, title: productTitle(product), image: productImage(product), price: productPrice(product), ts: Date.now() };
+      const idx = browsingHistory.findIndex(h => h.id === product.id);
+      if (idx !== -1) browsingHistory.splice(idx, 1);
+      browsingHistory.unshift(entry);
+      if (browsingHistory.length > 20) browsingHistory.length = 20;
+      saveJson("wavestore-history", browsingHistory);
+    }
+
+    function renderHistoryRail() {
+      const rail = el("historyRail");
+      if (!rail) return;
+      if (!browsingHistory.length) { rail.innerHTML = '<p class="text-body-secondary small mb-0">Products you view will appear here.</p>'; return; }
+      rail.innerHTML = "";
+      for (const item of browsingHistory.slice(0, 12)) {
+        const card = document.createElement("a");
+        card.href = `/product/${item.id}`;
+        card.className = "card flex-shrink-0 text-decoration-none";
+        card.setAttribute("style", "width:140px");
+        card.innerHTML = `
+          ${item.image ? `<img src="${esc(item.image)}" class="card-img-top" alt="">` : ""}
+          <div class="card-body p-2">
+            <div class="small fw-semibold text-truncate">${esc(item.title)}</div>
+            <div class="small text-primary fw-bold">${money(item.price)}</div>
+          </div>`;
+        rail.appendChild(card);
+      }
+    }
+
+    // --- Recommendations ---
+    async function loadRecommendations() {
+      const rail = el("recsRail");
+      if (!rail) return;
+      const seed = browsingHistory[0]?.id || state.catalog[0]?.id;
+      if (!seed) { rail.innerHTML = '<div class="col"><p class="text-body-secondary small">Browse some products to get personalised recommendations.</p></div>'; return; }
+      try {
+        const resp = await api("/v2/recommend", "POST", { productId: seed, visitorId, pageSize: 6 });
+        const recs = (resp.results || []).map(r => r.product || r).filter(Boolean);
+        if (!recs.length) { rail.innerHTML = '<div class="col"><p class="text-body-secondary small">No recommendations yet.</p></div>'; return; }
+        rail.innerHTML = "";
+        for (const p of recs) {
+          const col = document.createElement("div");
+          col.className = "col";
+          col.innerHTML = `
+            <a href="/product/${esc(p.id)}" class="card h-100 text-decoration-none">
+              ${productImage(p) ? `<img src="${esc(productImage(p))}" class="card-img-top" alt="">` : ""}
+              <div class="card-body p-2">
+                <div class="small fw-semibold text-truncate">${esc(productTitle(p))}</div>
+                <div class="small text-primary fw-bold">${money(productPrice(p))}</div>
+              </div>
+            </a>`;
+          rail.appendChild(col);
+        }
+      } catch { rail.innerHTML = '<div class="col"><p class="text-body-secondary small">Recommendations unavailable.</p></div>'; }
+    }
+
+    // Wire up events
+    renderBasketCount();
+
+    // Load categories for nav on all pages
+    async function loadCategoryNav() {
+      try {
+        const data = await api("/v2/catalog/products?offset=0&limit=1000");
+        state.catalog = data.products || [];
+        state.catalogById = new Map(state.catalog.map(p => [p.id, p]));
+        const cats = [...new Set(state.catalog.flatMap(p => p.categories || []))].sort();
+        renderCategoryNav(cats);
+      } catch { el("categoryNav").innerHTML = ""; }
+    }
+
+    if (pageMode === "home") {
+      el("searchBtn").addEventListener("click", () => { showSearchView(); runSearch(); });
+      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { showSearchView(); runSearch(); } });
+      [el("categoryFilter"), el("brandFilter"), el("availabilityFilter"), el("sortFilter"), el("minPrice"), el("maxPrice"), el("minStock"), el("maxStock")]
+        .forEach(n => n?.addEventListener("change", () => runSearch()));
+      renderHistoryRail();
+      loadCatalog().then(() => { renderCarousel(); renderDealsGrid(); loadRecommendations(); }).catch(err => console.error(err));
+    } else {
+      loadCategoryNav();
+    }
+
+    if (pageMode === "product") {
+      renderProductPage();
+    }
+
+    if (pageMode === "basket") {
+      renderBasketPage();
+      el("checkoutBtn")?.addEventListener("click", () => { checkout(); renderBasketPage(); });
+      el("clearBasketBtn")?.addEventListener("click", () => { clearBasket(); });
+    }
+
+    if (pageMode === "account") {
+      el("loginBtn")?.addEventListener("click", () => loginWithSts().catch(err => { el("accountAuthStatus").textContent = err.message; }));
+      if (state.authToken) el("accountAuthStatus").textContent = `Signed in as ${state.authUser}`;
+    }
+  </script>
+</body>
+</html>
+
