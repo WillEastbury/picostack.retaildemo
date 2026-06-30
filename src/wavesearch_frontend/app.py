@@ -387,7 +387,6 @@ def orchestrator_html() -> str:
       <p class='muted'>WaveFunction-style admin UI for catalog, stock, pricing, customers, orders, and invoices.</p>
       <div class='links'>
         <a href='https://erp.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp.retail.demos.wavefunctionlabs.com</a>
-        <a href='https://erp-frontend.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp-frontend.retail.demos.wavefunctionlabs.com</a>
       </div>
     </div>
 

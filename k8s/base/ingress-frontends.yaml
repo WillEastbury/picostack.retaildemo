@@ -17,7 +17,6 @@ spec:
     - search-api.retail.demos.wavefunctionlabs.com
     - erp-api.retail.demos.wavefunctionlabs.com
     - storefront.retail.demos.wavefunctionlabs.com
-    - erp-frontend.retail.demos.wavefunctionlabs.com
     - labs-frontend.retail.demos.wavefunctionlabs.com
     - orchestrator.retail.demos.wavefunctionlabs.com
   rules:
@@ -147,16 +146,6 @@ spec:
             name: wavestore-frontend
             port:
               number: 8804
-  - host: erp-frontend.retail.demos.wavefunctionlabs.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: wavestore-erp-frontend
-            port:
-              number: 8805
   - host: labs-frontend.retail.demos.wavefunctionlabs.com
     http:
       paths:
