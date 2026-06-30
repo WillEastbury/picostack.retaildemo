@@ -348,6 +348,7 @@ def orchestrator_html() -> str:
       <div class='links'>
         <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>store.retail.demos.wavefunctionlabs.com</a>
         <a href='https://storefront.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>storefront.retail.demos.wavefunctionlabs.com</a>
+        <a href='https://voicedemo.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>voicedemo.demos.wavefunctionlabs.com</a>
       </div>
     </div>
 
@@ -367,6 +368,14 @@ def orchestrator_html() -> str:
         <a href='https://labs.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs.retail.demos.wavefunctionlabs.com</a>
         <a href='https://labs-frontend.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs-frontend.retail.demos.wavefunctionlabs.com</a>
         <a href='/platform-guide' target='_blank' rel='noopener'>/platform-guide</a>
+      </div>
+    </div>
+
+    <div class='card'>
+      <h3>Original storefront (preserved)</h3>
+      <p class='muted'>Legacy WaveStore/Pico Outfitters storefront from the earlier demo build, kept live for reference and comparison.</p>
+      <div class='links'>
+        <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>Open original storefront</a>
       </div>
     </div>
   </div>
