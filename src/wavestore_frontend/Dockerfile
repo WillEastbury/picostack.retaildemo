@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
 COPY V2 ./V2
+COPY telemetry-demo.html ./telemetry-demo.html
 
 EXPOSE 8804
 
