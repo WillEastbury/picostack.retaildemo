@@ -1,0 +1,1 @@
+"""WaveStore shopper frontend."""

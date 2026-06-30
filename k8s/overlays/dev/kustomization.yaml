@@ -22,14 +22,20 @@ replicas:
 
 images:
   - name: ghcr.io/willeastbury/wave-sts
+    newName: tileforgeacr.azurecr.io/wave-sts
     newTag: dev
   - name: ghcr.io/willeastbury/wavestore-erp-api
+    newName: tileforgeacr.azurecr.io/wavestore-erp-api
     newTag: dev
   - name: ghcr.io/willeastbury/wavesearch-labs-retail-search-api
+    newName: tileforgeacr.azurecr.io/wavesearch-labs-retail-search-api
     newTag: dev
   - name: ghcr.io/willeastbury/wavestore-frontend
+    newName: tileforgeacr.azurecr.io/wavestore-frontend
     newTag: dev
   - name: ghcr.io/willeastbury/wavestore-erp-frontend
+    newName: tileforgeacr.azurecr.io/wavestore-erp-frontend
     newTag: dev
   - name: ghcr.io/willeastbury/wavesearch-labs-frontend
+    newName: tileforgeacr.azurecr.io/wavesearch-labs-frontend
     newTag: dev

@@ -1,0 +1,1 @@
+"""WaveSearch Labs backend API."""
