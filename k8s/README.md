@@ -100,6 +100,9 @@ kubectl port-forward -n wave-system svc/wavesearch-frontend 8806:8806 &
 
 ## Container Image Requirements
 
+> **Note (ARM cluster):** build images **in-cluster** for `linux/arm64`.  
+> Local default `docker build` outputs can be `amd64` and will fail on ARM nodes (`exec format error`).
+
 Each service Dockerfile is included in this repo and should be built from the repo root with `-f`:
 
 ```bash

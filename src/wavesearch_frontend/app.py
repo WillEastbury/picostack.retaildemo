@@ -376,108 +376,145 @@ Validation criteria:
 
 def orchestrator_html() -> str:
     return """<!doctype html>
-<html>
+<html lang='en'>
 <head>
   <meta charset='utf-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
   <title>Wave Retail Demo Orchestrator</title>
+  <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
   <style>
-    :root { --bg:#111; --panel:#1d1d1d; --soft:#171717; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; --accent-soft:#3a2028; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background: var(--bg); color: var(--text); }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .brand { font-size: 34px; font-weight: 900; letter-spacing: -.04em; margin: 0 0 6px; }
-    .muted { color: var(--muted); }
-    .panel { background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
-    .card { background: var(--soft); border:1px solid var(--line); border-radius:12px; padding:12px; }
-    .card h3 { margin: 0 0 8px; }
-    .links { display:grid; gap:8px; margin-top:8px; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    ul { margin: 0; padding-left: 18px; }
-    li { margin: 6px 0; color: var(--muted); }
-    .pill { display:inline-block; margin-right:8px; margin-bottom:8px; background: var(--accent-soft); color: var(--accent); border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
+    body { background: #f8f9fa; }
+    .diagram-layer { border: 1px solid #dee2e6; border-radius: 0.5rem; padding: 0.75rem; background: #fff; }
+    .node { border: 1px solid #dee2e6; border-radius: 0.5rem; padding: 0.5rem 0.75rem; background: #f8f9fa; }
+    .arrow { text-align: center; color: #6c757d; font-weight: 700; }
+    .flow-tree ul { margin-bottom: 0.5rem; }
+    .flow-tree li { margin-bottom: 0.35rem; }
   </style>
 </head>
 <body>
-<div class='wrap'>
-  <h1 class='brand'>Wave Retail Demo Orchestrator</h1>
-  <p class='muted'>Single landing page for the demo platform: where to go, what each component does, and how indexing/search/recommendations flow through the system.</p>
-  <div>
-    <span class='pill'>Demo-only topology</span>
-    <span class='pill'>AKS wave-dev</span>
-    <span class='pill'>Kaniko in-cluster builds</span>
-    <span class='pill'>STS + scoped JWTs</span>
+<div class='container py-4'>
+  <div class='mb-4'>
+    <h1 class='display-6 mb-2'>Wave Retail Demo Orchestrator</h1>
+    <p class='text-muted mb-2'>Entry points, service connectivity, and data flow across the retail demo platform.</p>
+    <span class='badge text-bg-primary me-1'>Demo-only topology</span>
+    <span class='badge text-bg-secondary me-1'>AKS wave-dev</span>
+    <span class='badge text-bg-success me-1'>In-cluster ARM builds</span>
+    <span class='badge text-bg-dark'>STS scoped JWTs</span>
   </div>
 
-  <div class='panel' style='margin-top:12px;'>
-    <h2 style='margin-top:0;'>Platform overview</h2>
-    <ul>
-      <li><strong>wave-sts</strong> issues audience-scoped tokens and enforces scope contracts.</li>
-      <li><strong>wavestore-erp-api</strong> is source-of-truth for products, stock, pricing, orders, and catalog export.</li>
-      <li><strong>wavesearch-api</strong> ingests ERP catalog snapshots, rebuilds runtime index, serves search/recommend APIs, and tracks events/analytics.</li>
-      <li><strong>Frontends</strong>: storefront (shopper), ERP admin, and WaveSearch Labs operator UI.</li>
-      <li><strong>Ingress</strong>: all hosts route through one shared nginx ingress public IP.</li>
-    </ul>
-  </div>
-
-  <div class='grid' style='margin-top:12px;'>
-    <div class='card'>
-      <h3>Shopper experience</h3>
-      <p class='muted'>Bootswatch storefront for demo shopping, recommendations, and order placement.</p>
-      <div class='links'>
-        <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>store.retail.demos.wavefunctionlabs.com</a>
-        <a href='https://storefront.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>storefront.retail.demos.wavefunctionlabs.com</a>
-        <a href='https://voicedemo.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>voicedemo.demos.wavefunctionlabs.com</a>
-      </div>
-    </div>
-
-    <div class='card'>
-      <h3>ERP admin</h3>
-      <p class='muted'>WaveFunction-style admin UI for catalog, stock, pricing, customers, orders, and invoices.</p>
-      <div class='links'>
-        <a href='https://erp.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp.retail.demos.wavefunctionlabs.com</a>
-      </div>
-    </div>
-
-    <div class='card'>
-      <h3>Search Labs + platform docs</h3>
-      <p class='muted'>WaveFunction-style control UI for ingestion, merchandising, analytics, plus platform guide.</p>
-      <div class='links'>
-        <a href='https://labs.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs.retail.demos.wavefunctionlabs.com</a>
-        <a href='https://labs-frontend.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs-frontend.retail.demos.wavefunctionlabs.com</a>
-        <a href='/platform-guide' target='_blank' rel='noopener'>/platform-guide</a>
-      </div>
-    </div>
-
-    <div class='card'>
-      <h3>Original storefront (preserved)</h3>
-      <p class='muted'>Legacy WaveStore/Pico Outfitters storefront from the earlier demo build, kept live for reference and comparison.</p>
-      <div class='links'>
-        <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>Open original storefront</a>
+  <div class='card shadow-sm mb-3'>
+    <div class='card-body'>
+      <h2 class='h5'>Entry points</h2>
+      <div class='row g-3'>
+        <div class='col-md-4'>
+          <div class='node h-100'>
+            <h3 class='h6'>Shopper</h3>
+            <a href='https://store.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>store.retail.demos.wavefunctionlabs.com</a><br>
+            <a href='https://storefront.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>storefront.retail.demos.wavefunctionlabs.com</a>
+          </div>
+        </div>
+        <div class='col-md-4'>
+          <div class='node h-100'>
+            <h3 class='h6'>ERP admin</h3>
+            <a href='https://erp.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>erp.retail.demos.wavefunctionlabs.com</a>
+          </div>
+        </div>
+        <div class='col-md-4'>
+          <div class='node h-100'>
+            <h3 class='h6'>Search ops + docs</h3>
+            <a href='https://labs.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>labs.retail.demos.wavefunctionlabs.com</a><br>
+            <a href='https://orchestrator.retail.demos.wavefunctionlabs.com' target='_blank' rel='noopener'>orchestrator.retail.demos.wavefunctionlabs.com</a><br>
+            <a href='/platform-guide' target='_blank' rel='noopener'>/platform-guide</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class='grid' style='margin-top:12px;'>
-    <div class='card'>
-      <h3>Service endpoints</h3>
-      <div class='links'>
-        <a href='https://sts.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>STS health</a>
-        <a href='https://search-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>Search API health</a>
-        <a href='https://erp-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>ERP API health</a>
+  <div class='card shadow-sm mb-3'>
+    <div class='card-body'>
+      <h2 class='h5'>Entry-point and layer diagram</h2>
+      <div class='diagram-layer mb-2'>
+        <div class='row g-2'>
+          <div class='col-md-4'><div class='node'>Storefront hosts</div></div>
+          <div class='col-md-4'><div class='node'>ERP host</div></div>
+          <div class='col-md-4'><div class='node'>Labs + Orchestrator hosts</div></div>
+        </div>
+      </div>
+      <div class='arrow'>|</div>
+      <div class='arrow'>v</div>
+      <div class='diagram-layer mb-2'>
+        <div class='node'>Shared ingress layer (nginx, host-based routing)</div>
+      </div>
+      <div class='arrow'>|</div>
+      <div class='arrow'>v</div>
+      <div class='diagram-layer mb-2'>
+        <div class='row g-2'>
+          <div class='col-md-4'><div class='node'>wavestore-frontend</div></div>
+          <div class='col-md-4'><div class='node'>wavestore-erp-frontend</div></div>
+          <div class='col-md-4'><div class='node'>wavesearch-frontend</div></div>
+        </div>
+      </div>
+      <div class='arrow'>|</div>
+      <div class='arrow'>v</div>
+      <div class='diagram-layer mb-2'>
+        <div class='row g-2'>
+          <div class='col-md-4'><div class='node'>wave-sts</div></div>
+          <div class='col-md-4'><div class='node'>wavestore-erp-api</div></div>
+          <div class='col-md-4'><div class='node'>wavesearch-api</div></div>
+        </div>
+      </div>
+      <div class='arrow'>|</div>
+      <div class='arrow'>v</div>
+      <div class='diagram-layer'>
+        <div class='node'>Data/state layer: ERP catalog + orders, search runtime index, events/analytics overlays</div>
       </div>
     </div>
-    <div class='card'>
-      <h3>How data flows</h3>
+  </div>
+
+  <div class='card shadow-sm mb-3'>
+    <div class='card-body flow-tree'>
+      <h2 class='h5'>Connection tree and data flow</h2>
       <ul>
-        <li>Storefront basket/checkout calls <code>/v2/checkout</code>, which places authoritative orders in ERP.</li>
-        <li>ERP updates product/stock/pricing state.</li>
-        <li>Labs calls <code>/search/ingest/from-erp</code> to pull ERP catalog export.</li>
-        <li>WaveSearch rebuilds runtime index and serves query/recommend endpoints.</li>
-        <li>Storefront consumes those APIs and posts events back for analytics.</li>
+        <li><strong>Entry hosts</strong>
+          <ul>
+            <li>store* -> wavestore-frontend -> /search, /erp, /sts routes</li>
+            <li>erp -> wavestore-erp-frontend -> ERP API + STS</li>
+            <li>labs/orchestrator -> wavesearch-frontend -> Search API + ERP API + STS</li>
+          </ul>
+        </li>
+        <li><strong>Identity/auth</strong>
+          <ul>
+            <li>All frontends obtain scoped JWTs from wave-sts</li>
+            <li>All backend routes enforce audience/scope + tenant headers</li>
+          </ul>
+        </li>
+        <li><strong>Catalog and index lifecycle</strong>
+          <ul>
+            <li>wavestore-erp-api maintains product, stock, pricing, offer, order data</li>
+            <li>wavesearch-api ingest pulls /erp/export/catalog and rebuilds runtime index</li>
+            <li>Storefront query/recommend calls are served from the search runtime index</li>
+          </ul>
+        </li>
+        <li><strong>Shopping and telemetry</strong>
+          <ul>
+            <li>Checkout path: storefront -> /v2/checkout -> ERP order placement/invoice</li>
+            <li>Clickstream path: storefront -> /search/events -> analytics/ops feedback</li>
+            <li>Ops path: labs -> /search/admin/* (rules, config, analytics)</li>
+          </ul>
+        </li>
       </ul>
+    </div>
+  </div>
+
+  <div class='card shadow-sm'>
+    <div class='card-body'>
+      <h2 class='h5'>Service endpoint checks</h2>
+      <div class='row g-3'>
+        <div class='col-md-4'><a href='https://sts.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>STS health</a></div>
+        <div class='col-md-4'><a href='https://search-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>Search API health</a></div>
+        <div class='col-md-4'><a href='https://erp-api.retail.demos.wavefunctionlabs.com/healthz' target='_blank' rel='noopener'>ERP API health</a></div>
+      </div>
     </div>
   </div>
 </div>
