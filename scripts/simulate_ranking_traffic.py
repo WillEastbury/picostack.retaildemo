@@ -136,7 +136,7 @@ def main() -> None:
     parser.add_argument("--admin-password", default="demo123!", help="wave-sts password for --admin-user")
     parser.add_argument("--tenant", default="demo-tenant", help="X-Tenant-Id header value")
     parser.add_argument("--query", default="boot", help="baseline search query to rank the target product within")
-    parser.add_argument("--events", type=int, default=25, help="number of simulated visitor sessions to fire (each visitor fires 2-4 events)")
+    parser.add_argument("--events", type=int, default=100, help="number of simulated visitor sessions to fire (each visitor fires 2-4 events)")
     parser.add_argument("--page-size", type=int, default=10, help="page size for the baseline/verification query")
     args = parser.parse_args()
     exit_code = asyncio.run(run(args))
