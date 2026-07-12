@@ -43,6 +43,11 @@ class ERPState:
     # doesn't demote a customer's tier -- matches how real loyalty programs work). history is an
     # append-only ledger of earn/redeem events for transparency/audit.
     loyalty_accounts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Whitelabel branding config -- store name/logo/favicon/hero copy/accent color, so the
+    # storefront can be reskinned per-deployment via an admin API call instead of editing HTML.
+    # Empty dict means "use defaults" (see BRANDING_DEFAULTS below); only overridden keys are
+    # stored so a partial update doesn't need to resend every field.
+    branding: dict[str, Any] = field(default_factory=dict)
 
 
 class ERPStore:
@@ -863,6 +868,39 @@ def create_app() -> FastAPI:
             return {"error": "customer not found"}
         store._save()
         return {"accepted": True, "deleted": customer_id}
+
+    # --- Whitelabel branding ---
+    BRANDING_DEFAULTS = {
+        "storeName": "WaveStore",
+        "tagline": "Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.",
+        "logoUrl": "/static/images/wavestore-hero-mini.jpg",
+        "faviconUrl": "/static/images/favicon.ico",
+        "primaryColor": "#0d6efd",
+    }
+
+    @app.get("/erp/branding")
+    async def get_branding() -> dict[str, Any]:
+        # Deliberately no auth requirement -- this is display configuration the storefront needs
+        # to render its own header/hero/favicon for every anonymous shopper, not sensitive data.
+        return {**BRANDING_DEFAULTS, **store.state.branding}
+
+    @app.post("/erp/branding")
+    async def set_branding(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        allowed_keys = set(BRANDING_DEFAULTS.keys())
+        unknown = set(payload.keys()) - allowed_keys
+        if unknown:
+            return {"error": f"unknown branding field(s): {sorted(unknown)}. Allowed: {sorted(allowed_keys)}"}
+        store.state.branding.update({k: v for k, v in payload.items() if v is not None})
+        store._save()
+        return {"accepted": True, "branding": {**BRANDING_DEFAULTS, **store.state.branding}}
+
+    @app.delete("/erp/branding")
+    async def reset_branding(context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        store.state.branding = {}
+        store._save()
+        return {"accepted": True, "branding": dict(BRANDING_DEFAULTS)}
 
     # --- Loyalty points & rewards ---
     @app.get("/erp/loyalty/tiers")

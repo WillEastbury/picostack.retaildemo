@@ -107,25 +107,41 @@ def create_app() -> FastAPI:
       <button data-entity="customers">Customers</button>
       <button data-entity="orders">Orders</button>
       <button data-entity="invoices">Invoices</button>
+      <button data-entity="branding">Branding</button>
     </div>
 
     <div class="panel">
       <h3 id="entityTitle" style="margin-top:0;">Products</h3>
-      <div class="toolbar">
+      <div class="toolbar" id="tableToolbar">
         <button id="refreshBtn" class="secondary">Refresh</button>
         <button id="createBtn">New</button>
         <input id="customerFilter" placeholder="Customer ID filter (orders/invoices)" style="max-width:300px;">
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap" id="tableWrap">
         <table>
           <thead><tr id="tableHead"></tr></thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-      <div class="pager">
+      <div class="pager" id="pagerWrap">
         <button id="prevBtn" class="secondary">Prev</button>
         <span id="pageInfo" class="muted">Page 1 / 1</span>
         <button id="nextBtn" class="secondary">Next</button>
+      </div>
+      <div id="brandingPanel" style="display:none;">
+        <p class="muted">Storefront whitelabel config -- controls the store name, logo, favicon, hero tagline, and accent color shown on WaveStore. Changes are picked up by the storefront within 30 seconds (short cache).</p>
+        <div class="row">
+          <div class="col-6"><label>Store name</label><input id="brandStoreName" placeholder="WaveStore"></div>
+          <div class="col-6"><label>Primary color</label><input id="brandPrimaryColor" type="color" value="#0d6efd"></div>
+          <div class="col-12"><label>Hero tagline</label><input id="brandTagline" placeholder="Discover deals..."></div>
+          <div class="col-6"><label>Logo URL</label><input id="brandLogoUrl" placeholder="/static/images/wavestore-hero-mini.jpg"></div>
+          <div class="col-6"><label>Favicon URL</label><input id="brandFaviconUrl" placeholder="/static/images/favicon.ico"></div>
+        </div>
+        <div class="toolbar" style="margin-top:10px;">
+          <button id="saveBrandingBtn">Save branding</button>
+          <button id="resetBrandingBtn" class="secondary">Reset to defaults</button>
+        </div>
+        <div id="brandingStatus" class="status"></div>
       </div>
       <div id="status" class="status"></div>
     </div>
@@ -437,9 +453,46 @@ async function deleteRecord(row) {
 function setEntity(next) {
   state.entity = next;
   state.page = 0;
-  document.getElementById("entityTitle").textContent = schemas[next].title;
+  document.getElementById("entityTitle").textContent = next === "branding" ? "Branding" : schemas[next].title;
   document.querySelectorAll("[data-entity]").forEach((b) => b.classList.toggle("active", b.dataset.entity === next));
+  const isBranding = next === "branding";
+  document.getElementById("tableToolbar").style.display = isBranding ? "none" : "";
+  document.getElementById("tableWrap").style.display = isBranding ? "none" : "";
+  document.getElementById("pagerWrap").style.display = isBranding ? "none" : "";
+  document.getElementById("brandingPanel").style.display = isBranding ? "" : "none";
+  if (isBranding) { loadBranding().catch((err) => setBrandingStatus(err.message)); return; }
   loadEntity(true).catch((err) => setStatus(err.message));
+}
+
+function setBrandingStatus(msg) { document.getElementById("brandingStatus").textContent = msg || ""; }
+
+async function loadBranding() {
+  const b = await callApi("/erp/branding", "GET");
+  document.getElementById("brandStoreName").value = b.storeName || "";
+  document.getElementById("brandTagline").value = b.tagline || "";
+  document.getElementById("brandLogoUrl").value = b.logoUrl || "";
+  document.getElementById("brandFaviconUrl").value = b.faviconUrl || "";
+  document.getElementById("brandPrimaryColor").value = b.primaryColor || "#0d6efd";
+  setBrandingStatus("Loaded current branding.");
+}
+
+async function saveBranding() {
+  const payload = {
+    storeName: document.getElementById("brandStoreName").value.trim(),
+    tagline: document.getElementById("brandTagline").value.trim(),
+    logoUrl: document.getElementById("brandLogoUrl").value.trim(),
+    faviconUrl: document.getElementById("brandFaviconUrl").value.trim(),
+    primaryColor: document.getElementById("brandPrimaryColor").value.trim(),
+  };
+  await callApi("/erp/branding", "POST", payload);
+  setBrandingStatus("Branding saved -- storefront picks this up within 30 seconds.");
+}
+
+async function resetBranding() {
+  if (!confirm("Reset branding to WaveStore defaults?")) return;
+  await callApi("/erp/branding", "DELETE");
+  await loadBranding();
+  setBrandingStatus("Branding reset to defaults.");
 }
 
 document.getElementById("signInBtn").addEventListener("click", () => signIn().then(() => loadEntity(true)).catch((err) => setStatus(err.message)));
@@ -453,6 +506,8 @@ document.getElementById("nextBtn").addEventListener("click", () => {
 });
 document.getElementById("cancelBtn").addEventListener("click", closeModal);
 document.getElementById("saveBtn").addEventListener("click", () => saveModal().catch((err) => { document.getElementById("modalError").textContent = err.message; }));
+document.getElementById("saveBrandingBtn").addEventListener("click", () => saveBranding().catch((err) => setBrandingStatus(err.message)));
+document.getElementById("resetBrandingBtn").addEventListener("click", () => resetBranding().catch((err) => setBrandingStatus(err.message)));
 document.querySelectorAll("[data-entity]").forEach((b) => b.addEventListener("click", () => setEntity(b.dataset.entity)));
 
 setEntity("products");

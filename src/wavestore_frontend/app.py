@@ -321,6 +321,24 @@ def create_app() -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"offers backend failed: {exc}") from exc
 
+    _branding_cache: dict[str, tuple[dict[str, Any], float]] = {}
+    BRANDING_CACHE_TTL_SECONDS = 30
+
+    def do_branding(tenant: str) -> dict[str, Any]:
+        # Branding is display config fetched by every anonymous page load, so it's cached briefly
+        # per-tenant (unlike the STS token cache, no auth involved -- /erp/branding is a public
+        # read) to avoid a round-trip to the ERP on every single storefront page render.
+        cached = _branding_cache.get(tenant)
+        now = time.monotonic()
+        if cached and cached[1] > now:
+            return cached[0]
+        try:
+            branding = _json_request(f"{erp_api}/erp/branding", headers={"X-Tenant-Id": tenant})
+        except Exception:
+            branding = {}  # branding is cosmetic -- an ERP outage should never break the storefront
+        _branding_cache[tenant] = (branding, now + BRANDING_CACHE_TTL_SECONDS)
+        return branding
+
     def do_search_offers(query: Any, page_size: Any, tenant: str) -> dict[str, Any]:
         try:
             return _json_request(
@@ -499,6 +517,10 @@ def create_app() -> FastAPI:
     ) -> dict[str, Any]:
         tenant = tenant_value(x_tenant_id)
         return do_offers(tenant)
+
+    @app.get("/v2/branding")
+    async def v2_branding(x_tenant_id: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+        return do_branding(tenant_value(x_tenant_id))
 
     @app.post("/v2/offers/search")
     async def v2_offers_search(

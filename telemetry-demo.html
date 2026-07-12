@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WaveStore</title>
-  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <title id="pageTitleTag">WaveStore</title>
+  <link id="faviconIco" rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <link id="faviconPng" rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css">
 </head>
 <body data-page="{{PAGE_MODE}}">
 
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+  <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" id="mainNavbar">
     <div class="container">
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
-        <img src="/static/images/wavestore-hero-mini.jpg" alt="" width="28" height="28" class="rounded" style="object-fit:cover;">
-        WaveStore
+        <img id="brandLogo" src="/static/images/wavestore-hero-mini.jpg" alt="" width="28" height="28" class="rounded" style="object-fit:cover;">
+        <span id="brandName">WaveStore</span>
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
         <span class="navbar-toggler-icon"></span>
@@ -81,11 +81,11 @@
       <div class="p-4 p-md-5 mb-4 rounded position-relative overflow-hidden" style="background: linear-gradient(135deg,#2d0f5e 0%,#593196 55%,#e06c00 100%);">
         <div class="row align-items-center">
           <div class="col-lg-7">
-            <h1 class="display-5 fw-bold text-white">Welcome to WaveStore</h1>
-            <p class="lead text-white opacity-75">Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.</p>
+            <h1 class="display-5 fw-bold text-white" id="heroTitle">Welcome to WaveStore</h1>
+            <p class="lead text-white opacity-75" id="heroTagline">Discover deals, browse personalised recommendations, and find exactly what you need. Start typing in the search bar above to explore our full catalogue.</p>
           </div>
           <div class="col-lg-5 text-center">
-            <img src="/static/images/wavestore-hero.jpg" alt="WaveStore" class="img-fluid rounded shadow" style="max-height:180px;object-fit:cover;">
+            <img id="heroImage" src="/static/images/wavestore-hero.jpg" alt="WaveStore" class="img-fluid rounded shadow" style="max-height:180px;object-fit:cover;">
           </div>
         </div>
       </div>
@@ -267,7 +267,7 @@
 
   <footer class="border-top bg-light mt-5 py-4">
     <div class="container d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-      <div class="small text-body-secondary">
+      <div class="small text-body-secondary" id="footerCopyright">
         &copy; 2026 WaveStore. All rights reserved.
       </div>
       <nav class="d-flex gap-3">
@@ -1297,8 +1297,36 @@
       } catch { rail.innerHTML = '<div class="col"><p class="text-body-secondary small">Recommendations unavailable.</p></div>'; }
     }
 
+    // --- Whitelabel branding: pulled from ERP-admin-configurable /v2/branding so store name,
+    // logo, favicon, hero copy, accent color, and footer text can be reskinned per-deployment
+    // without touching this file. Falls back to the hardcoded WaveStore defaults already in the
+    // markup above if the branding call fails (offline/misconfigured ERP), so the storefront
+    // never breaks just because branding is unavailable.
+    async function applyBranding() {
+      try {
+        const b = await api("/v2/branding");
+        if (!b) return;
+        if (b.storeName) {
+          document.title = b.storeName;
+          el("pageTitleTag") && (el("pageTitleTag").textContent = b.storeName);
+          el("brandName") && (el("brandName").textContent = b.storeName);
+          el("footerCopyright") && (el("footerCopyright").innerHTML = `&copy; ${new Date().getFullYear()} ${esc(b.storeName)}. All rights reserved.`);
+          el("heroTitle") && (el("heroTitle").textContent = `Welcome to ${b.storeName}`);
+        }
+        if (b.tagline) el("heroTagline") && (el("heroTagline").textContent = b.tagline);
+        if (b.logoUrl) { el("brandLogo") && (el("brandLogo").src = b.logoUrl); el("heroImage") && (el("heroImage").src = b.logoUrl); }
+        if (b.faviconUrl) { el("faviconIco") && (el("faviconIco").href = b.faviconUrl); el("faviconPng") && (el("faviconPng").href = b.faviconUrl); }
+        if (b.primaryColor) {
+          const style = document.createElement("style");
+          style.textContent = `.bg-primary{background-color:${b.primaryColor}!important;} .btn-primary{background-color:${b.primaryColor}!important;border-color:${b.primaryColor}!important;} a.text-primary{color:${b.primaryColor}!important;}`;
+          document.head.appendChild(style);
+        }
+      } catch { /* branding is cosmetic only -- never block page render on it failing */ }
+    }
+
     // Wire up events
     renderBasketCount();
+    applyBranding();
 
     // Load categories for nav on all pages
     async function loadCategoryNav() {
