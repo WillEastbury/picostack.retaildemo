@@ -468,6 +468,21 @@ def create_app() -> FastAPI:
         # personalized-pricing item list, as explicit prices so the ERP doesn't re-resolve and
         # potentially race a pricing-condition change between init and confirm).
         order_result = do_checkout(pending["customerId"], pending["items"], pending["tenant"])
+        if provider.name != "native" and order_result.get("invoice"):
+            # A real gateway (Stripe/PayPal) has ALREADY taken the money by this point (capture()
+            # succeeded above) -- immediately mark the invoice PAID so the ERP's payment_received
+            # email hook fires. The native provider never reaches here since it has no separate
+            # capture step to speak of; its invoice stays OPEN exactly as before this feature.
+            try:
+                bearer = f"Bearer {issue_token('wavestore-erp-api', pending['tenant'], 'wave.shopper', ['erp.write', 'erp.read'])}"
+                _json_request(
+                    f"{erp_api}/erp/invoices/{order_result['invoice']['id']}",
+                    method="PUT",
+                    body={"status": "PAID"},
+                    headers={"Authorization": bearer, "X-Tenant-Id": pending["tenant"]},
+                )
+            except Exception:
+                pass  # marking the invoice PAID is a courtesy notification trigger, not a hard requirement for a successful checkout
         del _pending_checkouts[checkout_ref]
         return {"accepted": True, "payment": capture.to_dict(), **order_result}
 

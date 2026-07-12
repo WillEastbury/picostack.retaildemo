@@ -108,6 +108,7 @@ def create_app() -> FastAPI:
       <button data-entity="orders">Orders</button>
       <button data-entity="invoices">Invoices</button>
       <button data-entity="branding">Branding</button>
+      <button data-entity="email">Email</button>
     </div>
 
     <div class="panel">
@@ -142,6 +143,33 @@ def create_app() -> FastAPI:
           <button id="resetBrandingBtn" class="secondary">Reset to defaults</button>
         </div>
         <div id="brandingStatus" class="status"></div>
+      </div>
+      <div id="emailPanel" style="display:none;">
+        <p class="muted" id="emailConfigStatus">SMTP configuration status will appear here.</p>
+        <div class="row">
+          <div class="col-6"><label>Send test email to</label><input id="emailTestTo" placeholder="someone@example.com"></div>
+          <div class="col-6">
+            <label>Event type</label>
+            <select id="emailTestEventType">
+              <option value="order_confirmation">Order confirmation</option>
+              <option value="payment_received">Payment received</option>
+              <option value="order_shipped">Order shipped</option>
+              <option value="order_delivered">Order delivered</option>
+            </select>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:10px;">
+          <button id="sendTestEmailBtn">Send test email</button>
+          <button id="refreshOutboxBtn" class="secondary">Refresh outbox</button>
+        </div>
+        <div id="emailStatus" class="status"></div>
+        <h4>Outbox (most recent 50)</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>When</th><th>Event</th><th>To</th><th>Subject</th><th>Status</th></tr></thead>
+            <tbody id="emailOutboxBody"></tbody>
+          </table>
+        </div>
       </div>
       <div id="status" class="status"></div>
     </div>
@@ -453,14 +481,19 @@ async function deleteRecord(row) {
 function setEntity(next) {
   state.entity = next;
   state.page = 0;
-  document.getElementById("entityTitle").textContent = next === "branding" ? "Branding" : schemas[next].title;
+  const specialTitles = { branding: "Branding", email: "Email" };
+  document.getElementById("entityTitle").textContent = specialTitles[next] || schemas[next].title;
   document.querySelectorAll("[data-entity]").forEach((b) => b.classList.toggle("active", b.dataset.entity === next));
   const isBranding = next === "branding";
-  document.getElementById("tableToolbar").style.display = isBranding ? "none" : "";
-  document.getElementById("tableWrap").style.display = isBranding ? "none" : "";
-  document.getElementById("pagerWrap").style.display = isBranding ? "none" : "";
+  const isEmail = next === "email";
+  const isSpecialPanel = isBranding || isEmail;
+  document.getElementById("tableToolbar").style.display = isSpecialPanel ? "none" : "";
+  document.getElementById("tableWrap").style.display = isSpecialPanel ? "none" : "";
+  document.getElementById("pagerWrap").style.display = isSpecialPanel ? "none" : "";
   document.getElementById("brandingPanel").style.display = isBranding ? "" : "none";
+  document.getElementById("emailPanel").style.display = isEmail ? "" : "none";
   if (isBranding) { loadBranding().catch((err) => setBrandingStatus(err.message)); return; }
+  if (isEmail) { loadEmailPanel().catch((err) => setEmailStatus(err.message)); return; }
   loadEntity(true).catch((err) => setStatus(err.message));
 }
 
@@ -495,6 +528,36 @@ async function resetBranding() {
   setBrandingStatus("Branding reset to defaults.");
 }
 
+function setEmailStatus(msg) { document.getElementById("emailStatus").textContent = msg || ""; }
+
+function renderEmailOutbox(rows) {
+  const body = document.getElementById("emailOutboxBody");
+  if (!body) return;
+  if (!rows || !rows.length) { body.innerHTML = '<tr><td colspan="5" class="muted">No emails sent yet.</td></tr>'; return; }
+  body.innerHTML = rows.map(r => `<tr><td>${esc(r.createdAt || "")}</td><td>${esc(r.eventType || "")}</td><td>${esc(r.to || "")}</td><td>${esc(r.subject || "")}</td><td>${esc(r.status || "")}</td></tr>`).join("");
+}
+
+async function loadEmailPanel() {
+  const config = await callApi("/erp/email/config", "GET");
+  const el = document.getElementById("emailConfigStatus");
+  if (el) {
+    el.textContent = config.configured
+      ? `SMTP is configured (sending from ${config.fromAddress}) -- test emails and real order/payment/shipping notifications will actually send.`
+      : `SMTP is NOT configured (SMTP_HOST/SMTP_USERNAME/SMTP_PASSWORD env vars) -- notifications are still recorded in the outbox below (status "skipped_not_configured") so the pipeline is fully verifiable without real credentials.`;
+  }
+  const outbox = await callApi("/erp/email/outbox?limit=50", "GET");
+  renderEmailOutbox(outbox.emails || []);
+}
+
+async function sendTestEmail() {
+  const to = document.getElementById("emailTestTo").value.trim();
+  const eventType = document.getElementById("emailTestEventType").value;
+  if (!to) { setEmailStatus("Enter a recipient email address first."); return; }
+  const result = await callApi("/erp/email/test", "POST", { to, eventType });
+  setEmailStatus(`Test email result: ${result.result?.status || "unknown"}`);
+  await loadEmailPanel();
+}
+
 document.getElementById("signInBtn").addEventListener("click", () => signIn().then(() => loadEntity(true)).catch((err) => setStatus(err.message)));
 document.getElementById("refreshBtn").addEventListener("click", () => loadEntity().catch((err) => setStatus(err.message)));
 document.getElementById("createBtn").addEventListener("click", () => openModal("create", null));
@@ -508,6 +571,8 @@ document.getElementById("cancelBtn").addEventListener("click", closeModal);
 document.getElementById("saveBtn").addEventListener("click", () => saveModal().catch((err) => { document.getElementById("modalError").textContent = err.message; }));
 document.getElementById("saveBrandingBtn").addEventListener("click", () => saveBranding().catch((err) => setBrandingStatus(err.message)));
 document.getElementById("resetBrandingBtn").addEventListener("click", () => resetBranding().catch((err) => setBrandingStatus(err.message)));
+document.getElementById("sendTestEmailBtn").addEventListener("click", () => sendTestEmail().catch((err) => setEmailStatus(err.message)));
+document.getElementById("refreshOutboxBtn").addEventListener("click", () => loadEmailPanel().catch((err) => setEmailStatus(err.message)));
 document.querySelectorAll("[data-entity]").forEach((b) => b.addEventListener("click", () => setEntity(b.dataset.entity)));
 
 setEntity("products");

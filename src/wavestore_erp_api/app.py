@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 
 from wave_shared.auth import context_from_auth, require_scope
+from wavestore_erp_api import email_service
 
 
 @dataclass
@@ -48,6 +49,11 @@ class ERPState:
     # Empty dict means "use defaults" (see BRANDING_DEFAULTS below); only overridden keys are
     # stored so a partial update doesn't need to resend every field.
     branding: dict[str, Any] = field(default_factory=dict)
+    # Outbox/audit log for order/payment/shipping notification emails -- appended to on every
+    # send attempt regardless of whether real SMTP is configured (see email_service.py), so the
+    # whole notification pipeline is inspectable/demoable without live credentials. Bounded to
+    # the most recent 200 entries.
+    email_outbox: list[dict[str, Any]] = field(default_factory=list)
 
 
 class ERPStore:
@@ -902,6 +908,69 @@ def create_app() -> FastAPI:
         store._save()
         return {"accepted": True, "branding": dict(BRANDING_DEFAULTS)}
 
+    def _current_branding() -> dict[str, Any]:
+        return {**BRANDING_DEFAULTS, **store.state.branding}
+
+    # --- Email notifications (order confirmation / payment received / shipping updates) ---
+    EMAIL_FROM_ADDRESS = os.environ.get("SMTP_FROM_ADDRESS", "orders@wavestore.example")
+
+    def _customer_email(customer_id: str | None, fallback_email: str | None = None) -> str | None:
+        if fallback_email:
+            return fallback_email
+        if not customer_id:
+            return None
+        customer = store.state.customers.get(customer_id)
+        return str(customer.get("email")) if customer and customer.get("email") else None
+
+    def _send_notification(event_type: str, to_address: str | None, **template_args: Any) -> None:
+        email_service.send_event_email(
+            store.state.email_outbox, event_type, to_address, _current_branding(), EMAIL_FROM_ADDRESS, **template_args
+        )
+        store._save()
+
+    def _product_titles_for(items: list[dict[str, Any]]) -> dict[str, str]:
+        titles: dict[str, str] = {}
+        for item in items:
+            product_id = str(item.get("productId") or "")
+            product = store.state.products.get(product_id)
+            if product:
+                titles[product_id] = str(product.get("title") or product_id)
+        return titles
+
+    @app.get("/erp/email/config")
+    async def email_config(context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        return {"configured": email_service.email_is_configured(), "fromAddress": EMAIL_FROM_ADDRESS}
+
+    @app.get("/erp/email/outbox")
+    async def email_outbox(limit: int = 50, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        rows = list(reversed(store.state.email_outbox))[: max(1, limit)]
+        return {"emails": rows, "totalCount": len(store.state.email_outbox)}
+
+    @app.post("/erp/email/test")
+    async def email_test(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        event_type = str(payload.get("eventType") or "order_confirmation")
+        to_address = str(payload.get("to") or "")
+        if not to_address:
+            return {"error": "to is required"}
+        sample_order = {"id": "ord-sample0001", "items": [{"productId": "SKU-SAMPLE", "quantity": 1, "price": 19.99}], "total": 19.99, "trackingNumber": "1Z999AA10123456784", "carrier": "Sample Carrier"}
+        sample_invoice = {"id": "inv-sample0001", "orderId": "ord-sample0001", "amount": 19.99}
+        args_by_event = {
+            "order_confirmation": {"order": sample_order, "product_titles": {"SKU-SAMPLE": "Sample Product"}},
+            "payment_received": {"invoice": sample_invoice},
+            "order_shipped": {"order": sample_order},
+            "order_delivered": {"order": sample_order},
+        }
+        if event_type not in args_by_event:
+            return {"error": f"unknown eventType: {event_type}. Allowed: {sorted(args_by_event.keys())}"}
+        entry = email_service.send_event_email(
+            store.state.email_outbox, event_type, to_address, _current_branding(), EMAIL_FROM_ADDRESS, **args_by_event[event_type]
+        )
+        store._save()
+        return {"accepted": True, "result": entry}
+
     # --- Loyalty points & rewards ---
     @app.get("/erp/loyalty/tiers")
     async def loyalty_tiers(context=Depends(erp_context)) -> dict[str, Any]:
@@ -999,6 +1068,12 @@ def create_app() -> FastAPI:
         response = {"accepted": True, "order": order, "invoice": invoice}
         if earn_result.get("earned"):
             response["loyaltyEarned"] = earn_result["earned"]
+        _send_notification(
+            "order_confirmation",
+            _customer_email(customer_id, payload.get("email")),
+            order=order,
+            product_titles=_product_titles_for(normalized_items),
+        )
         return response
 
     @app.get("/erp/orders/{order_id}")
@@ -1015,6 +1090,7 @@ def create_app() -> FastAPI:
         existing = store.state.orders.get(order_id)
         if not existing:
             return {"error": "order not found"}
+        previous_status = str(existing.get("status") or "")
         updated = {**existing, **payload, "id": order_id}
         if isinstance(updated.get("items"), list):
             normalized_items, total = _normalize_order_items(updated["items"], customer_id=str(updated.get("customerId") or ""))
@@ -1022,6 +1098,16 @@ def create_app() -> FastAPI:
             updated["total"] = total
         store.state.orders[order_id] = updated
         store._save()
+        # Shipping/delivery notification hooks: fire only on the actual transition INTO that
+        # status (not every update while already shipped/delivered), same principle as the
+        # invoice payment hook below.
+        new_status = str(updated.get("status") or "")
+        if new_status != previous_status:
+            customer_email = _customer_email(str(updated.get("customerId") or ""))
+            if new_status == "SHIPPED":
+                _send_notification("order_shipped", customer_email, order=updated)
+            elif new_status == "DELIVERED":
+                _send_notification("order_delivered", customer_email, order=updated)
         return {"accepted": True, "order": updated}
 
     @app.delete("/erp/orders/{order_id}")
@@ -1068,9 +1154,14 @@ def create_app() -> FastAPI:
         existing = store.state.invoices.get(invoice_id)
         if not existing:
             return {"error": "invoice not found"}
+        previous_status = str(existing.get("status") or "")
         row = {**existing, **payload, "id": invoice_id}
         store.state.invoices[invoice_id] = row
         store._save()
+        new_status = str(row.get("status") or "")
+        if new_status == "PAID" and previous_status != "PAID":
+            customer_email = _customer_email(str(row.get("customerId") or ""))
+            _send_notification("payment_received", customer_email, invoice=row)
         return {"accepted": True, "invoice": row}
 
     @app.delete("/erp/invoices/{invoice_id}")
