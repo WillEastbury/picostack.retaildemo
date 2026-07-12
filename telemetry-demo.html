@@ -60,10 +60,14 @@
       </ul>
     </div>
   </nav>
-  <!-- Subcategory bar: shown under the top-level category bar once a category with children is selected -->
-  <nav class="navbar navbar-expand bg-secondary-subtle py-1 d-none" id="subcategoryBar">
+  <!-- Subcategory bar: a constant, always-present second row (fixed min-height so nothing below
+       it ever jumps) whose CONTENTS change once a top-level category is selected -- the bar
+       itself never appears/disappears. -->
+  <nav class="navbar navbar-expand bg-secondary-subtle py-1" id="subcategoryBar" style="min-height:38px;">
     <div class="container overflow-auto">
-      <ul class="navbar-nav flex-nowrap gap-1" id="subcategoryNav"></ul>
+      <ul class="navbar-nav flex-nowrap gap-1" id="subcategoryNav">
+        <li class="nav-item"><span class="nav-link small text-body-secondary">Select a department above to see subcategories</span></li>
+      </ul>
     </div>
   </nav>
 
@@ -908,12 +912,22 @@
     }
 
     function renderSubcategoryNav(top, activeFullPath) {
-      const bar = el("subcategoryBar");
       const nav = el("subcategoryNav");
-      if (!bar || !nav) return;
-      const children = state.categoryTree?.get(top);
-      if (!children || !children.size) { bar.classList.add("d-none"); nav.innerHTML = ""; return; }
+      if (!nav) return;
+      const children = top ? state.categoryTree?.get(top) : null;
       nav.innerHTML = "";
+      if (!top) {
+        nav.innerHTML = '<li class="nav-item"><span class="nav-link small text-body-secondary">Select a department above to see subcategories</span></li>';
+        return;
+      }
+      if (!children || !children.size) {
+        // A flat top-level category (no "Top > Sub" children) -- still render a constant-shape
+        // bar (a single "All <Top>" pill) rather than an empty/placeholder row, so the bar's
+        // presence and height never depends on whether the selected department happens to have
+        // subcategories.
+        nav.innerHTML = `<li class="nav-item"><span class="nav-link small active">All ${esc(top)}</span></li>`;
+        return;
+      }
       const allLi = document.createElement("li");
       allLi.className = "nav-item";
       allLi.innerHTML = `<a class="nav-link small text-nowrap${activeFullPath ? "" : " active"}" href="#">All ${esc(top)}</a>`;
@@ -927,7 +941,6 @@
         li.querySelector("a").addEventListener("click", e => { e.preventDefault(); selectSubcategory(top, fullPath, label); });
         nav.appendChild(li);
       }
-      bar.classList.remove("d-none");
     }
 
     function selectTopCategory(top) {
@@ -939,8 +952,7 @@
       el("categoryNav").querySelectorAll(".nav-link").forEach(link => {
         link.classList.toggle("active", (top === "" && link.textContent === "All") || link.textContent.trim() === top);
       });
-      if (top) renderSubcategoryNav(top, "");
-      else { el("subcategoryBar")?.classList.add("d-none"); }
+      renderSubcategoryNav(top, "");
     }
 
     function selectSubcategory(top, fullPath, label) {
