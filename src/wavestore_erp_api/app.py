@@ -25,6 +25,13 @@ class ERPState:
     customers: dict[str, dict[str, Any]] = field(default_factory=dict)
     orders: dict[str, dict[str, Any]] = field(default_factory=dict)
     invoices: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # SAP-style hierarchies: a tree of named nodes (not just flat "A > B > C" category strings)
+    # that products/customers can be assigned to, and that pricing condition records (see
+    # /erp/pricing/conditions) and promotions can target at ANY level, not just a leaf. Two
+    # separate namespaces -- "product" and "customer" -- but identical node shape, so the same
+    # CRUD/resolution code (see _hierarchy_store/_node_path/_node_ancestors) serves both.
+    product_hierarchy: dict[str, dict[str, Any]] = field(default_factory=dict)
+    customer_hierarchy: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class ERPStore:
@@ -253,6 +260,92 @@ def create_app() -> FastAPI:
     ):
         return context_from_auth("wavestore-erp-api", authorization=authorization, x_tenant_id=x_tenant_id, require_tenant_header=True)
 
+    # --- Product & customer hierarchies (SAP-style: a real tree of named nodes, not a flat
+    # category string) -- shared implementation for both namespaces. ---
+    def _hierarchy_store(kind: str) -> dict[str, dict[str, Any]]:
+        if kind == "product":
+            return store.state.product_hierarchy
+        if kind == "customer":
+            return store.state.customer_hierarchy
+        raise ValueError(f"unknown hierarchy kind: {kind}")
+
+    def _node_ancestors(kind: str, node_id: str) -> list[str]:
+        # Self-to-root chain (most specific first) -- exactly the order a SAP-style condition
+        # record lookup needs to try: node itself, then its parent, then grandparent, etc.,
+        # stopping at the first level that has a matching price/promotion rule.
+        nodes = _hierarchy_store(kind)
+        chain: list[str] = []
+        current = node_id
+        seen: set[str] = set()
+        while current and current in nodes and current not in seen:
+            seen.add(current)
+            chain.append(current)
+            current = nodes[current].get("parentId") or ""
+        return chain
+
+    def _node_path(kind: str, node_id: str) -> str:
+        chain = _node_ancestors(kind, node_id)
+        nodes = _hierarchy_store(kind)
+        return " > ".join(nodes[n]["name"] for n in reversed(chain)) if chain else ""
+
+    def _node_level(kind: str, node_id: str) -> int:
+        return len(_node_ancestors(kind, node_id))
+
+    def _decorated_node(kind: str, node: dict[str, Any]) -> dict[str, Any]:
+        node_id = str(node.get("id") or "")
+        return {**node, "path": _node_path(kind, node_id), "level": _node_level(kind, node_id)}
+
+    def _hierarchy_children(kind: str, parent_id: str | None) -> list[dict[str, Any]]:
+        nodes = _hierarchy_store(kind)
+        parent_key = parent_id or None
+        return [n for n in nodes.values() if (n.get("parentId") or None) == parent_key]
+
+    def _upsert_hierarchy_node(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+        nodes = _hierarchy_store(kind)
+        node_id = str(payload.get("id") or f"{kind}-node-{uuid4().hex[:8]}")
+        parent_id = payload.get("parentId") or None
+        if parent_id and parent_id not in nodes:
+            raise ValueError(f"parentId {parent_id!r} does not exist in the {kind} hierarchy")
+        if parent_id == node_id:
+            raise ValueError("a node cannot be its own parent")
+        # Prevent cycles: the new parent can't be a descendant of this node (walk the candidate
+        # parent's own ancestor chain and make sure this node doesn't appear in it).
+        if parent_id:
+            ancestor_ids = _node_ancestors(kind, parent_id)
+            if node_id in ancestor_ids:
+                raise ValueError("assigning that parent would create a cycle in the hierarchy")
+        row = {"id": node_id, "name": str(payload.get("name") or node_id), "parentId": parent_id}
+        nodes[node_id] = row
+        store._save()
+        return _decorated_node(kind, row)
+
+    def _delete_hierarchy_node(kind: str, node_id: str) -> dict[str, Any]:
+        nodes = _hierarchy_store(kind)
+        if node_id not in nodes:
+            return {"error": "node not found"}
+        if _hierarchy_children(kind, node_id):
+            return {"error": "cannot delete a node with children -- delete or reparent its children first"}
+        entity_field = "hierarchyNodeId"
+        assigned = [
+            entity_id
+            for entity_id, entity in (store.state.products if kind == "product" else store.state.customers).items()
+            if entity.get(entity_field) == node_id
+        ]
+        if assigned:
+            return {"error": f"cannot delete a node with {len(assigned)} {kind}(s) still assigned to it -- reassign them first"}
+        removed = nodes.pop(node_id)
+        store._save()
+        return {"accepted": True, "deleted": removed}
+
+    def _decorate_entity_hierarchy(kind: str, entity: dict[str, Any]) -> dict[str, Any]:
+        # Adds a read-only "hierarchyPath"/"hierarchyAncestorIds" view onto a product/customer
+        # record for convenience (e.g. the ERP admin UI showing "Outdoor > Footwear > Boots"
+        # instead of just a raw node id) -- the stored record itself only keeps hierarchyNodeId.
+        node_id = entity.get("hierarchyNodeId")
+        if not node_id or node_id not in _hierarchy_store(kind):
+            return entity
+        return {**entity, "hierarchyPath": _node_path(kind, node_id), "hierarchyAncestorIds": _node_ancestors(kind, node_id)}
+
     def _normalize_product_id(value: str) -> str:
         return value.strip().lower()
 
@@ -310,10 +403,54 @@ def create_app() -> FastAPI:
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "service": "wavestore-erp-api"}
 
+    # --- Product & customer hierarchies ---
+    @app.get("/erp/hierarchy/{kind}")
+    async def list_hierarchy(kind: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        if kind not in ("product", "customer"):
+            return {"error": "kind must be 'product' or 'customer'"}
+        nodes = _hierarchy_store(kind)
+        decorated = [_decorated_node(kind, n) for n in nodes.values()]
+        decorated.sort(key=lambda n: (n["level"], n["path"]))
+        return {"kind": kind, "nodes": decorated}
+
+    @app.post("/erp/hierarchy/{kind}")
+    async def upsert_hierarchy_node(kind: str, payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        if kind not in ("product", "customer"):
+            return {"error": "kind must be 'product' or 'customer'"}
+        try:
+            node = _upsert_hierarchy_node(kind, payload)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        return {"accepted": True, "node": node}
+
+    @app.get("/erp/hierarchy/{kind}/{node_id}")
+    async def get_hierarchy_node(kind: str, node_id: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        if kind not in ("product", "customer"):
+            return {"error": "kind must be 'product' or 'customer'"}
+        nodes = _hierarchy_store(kind)
+        row = nodes.get(node_id)
+        if not row:
+            return {"error": "node not found"}
+        decorated = _decorated_node(kind, row)
+        decorated["children"] = [_decorated_node(kind, c) for c in _hierarchy_children(kind, node_id)]
+        decorated["ancestorIds"] = _node_ancestors(kind, node_id)
+        return {"node": decorated}
+
+    @app.delete("/erp/hierarchy/{kind}/{node_id}")
+    async def delete_hierarchy_node_endpoint(kind: str, node_id: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        if kind not in ("product", "customer"):
+            return {"error": "kind must be 'product' or 'customer'"}
+        return _delete_hierarchy_node(kind, node_id)
+
     @app.get("/erp/products")
     async def list_products(context=Depends(erp_context)) -> dict[str, Any]:
         require_scope(context, "erp.read")
-        return {"products": sorted(store.state.products.values(), key=lambda p: p.get("id", ""))}
+        rows = sorted(store.state.products.values(), key=lambda p: p.get("id", ""))
+        return {"products": [_decorate_entity_hierarchy("product", p) for p in rows]}
 
     @app.post("/erp/products")
     async def upsert_product(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
@@ -321,6 +458,9 @@ def create_app() -> FastAPI:
         product_id = str(payload.get("id") or payload.get("sku") or "").strip()
         if not product_id:
             return {"error": "id is required"}
+        hierarchy_node_id = payload.get("hierarchyNodeId")
+        if hierarchy_node_id and hierarchy_node_id not in store.state.product_hierarchy:
+            return {"error": f"hierarchyNodeId {hierarchy_node_id!r} does not exist in the product hierarchy"}
         merged = {"id": product_id, **payload}
         store.state.products[product_id] = merged
         if product_id not in store.state.stock:
@@ -331,7 +471,7 @@ def create_app() -> FastAPI:
                 price = payload["priceInfo"].get("price")
             store.state.pricing[product_id] = {"productId": product_id, "price": float(price or 0.0), "currencyCode": str(payload.get("currencyCode") or "GBP")}
         store._save()
-        return {"accepted": True, "product": merged}
+        return {"accepted": True, "product": _decorate_entity_hierarchy("product", merged)}
 
     @app.get("/erp/products/{product_id}")
     async def get_product(product_id: str, context=Depends(erp_context)) -> dict[str, Any]:
@@ -453,16 +593,20 @@ def create_app() -> FastAPI:
     @app.get("/erp/customers")
     async def list_customers(context=Depends(erp_context)) -> dict[str, Any]:
         require_scope(context, "erp.read")
-        return {"customers": sorted(store.state.customers.values(), key=lambda c: c.get("id", ""))}
+        rows = sorted(store.state.customers.values(), key=lambda c: c.get("id", ""))
+        return {"customers": [_decorate_entity_hierarchy("customer", c) for c in rows]}
 
     @app.post("/erp/customers")
     async def upsert_customer(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
         require_scope(context, "erp.write")
         customer_id = str(payload.get("id") or f"cust-{uuid4().hex[:8]}")
+        hierarchy_node_id = payload.get("hierarchyNodeId")
+        if hierarchy_node_id and hierarchy_node_id not in store.state.customer_hierarchy:
+            return {"error": f"hierarchyNodeId {hierarchy_node_id!r} does not exist in the customer hierarchy"}
         row = {"id": customer_id, **payload}
         store.state.customers[customer_id] = row
         store._save()
-        return {"accepted": True, "customer": row}
+        return {"accepted": True, "customer": _decorate_entity_hierarchy("customer", row)}
 
     @app.get("/erp/customers/{customer_id}")
     async def get_customer(customer_id: str, context=Depends(erp_context)) -> dict[str, Any]:
@@ -470,7 +614,7 @@ def create_app() -> FastAPI:
         row = store.state.customers.get(customer_id)
         if not row:
             return {"error": "customer not found"}
-        return {"customer": row}
+        return {"customer": _decorate_entity_hierarchy("customer", row)}
 
     @app.delete("/erp/customers/{customer_id}")
     async def delete_customer(customer_id: str, context=Depends(erp_context)) -> dict[str, Any]:
