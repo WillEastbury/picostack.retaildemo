@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from retail_v2.auth import TokenIssuer
 
 from wavestore_frontend.voice import TOOL_DEFINITIONS, WaveBrowserVoiceBridge, WaveVoiceToolContext, wave_voice_settings_from_env
+from wavestore_frontend.payments import CaptureResult, PaymentIntentResult, available_providers, get_provider
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -66,6 +67,13 @@ def create_app() -> FastAPI:
     sts = os.environ.get("WAVE_STS_URL", "http://127.0.0.1:8801")
     search_api = os.environ.get("WAVESEARCH_API_URL", "http://127.0.0.1:8803")
     erp_api = os.environ.get("WAVESTORE_ERP_API_URL", "http://127.0.0.1:8802")
+
+    # Pending checkouts awaiting payment confirmation (two-phase checkout: /v2/checkout/init
+    # creates a payment intent with the chosen provider and stashes what order to place once
+    # payment succeeds; /v2/checkout/confirm captures the payment and only THEN places the real
+    # ERP order). Process-local and short-lived by nature (a shopper completes payment within
+    # the same session), so an in-memory dict is fine here -- unlike the ERP's own durable state.
+    _pending_checkouts: dict[str, dict[str, Any]] = {}
 
     def tenant_value(x_tenant_id: str | None) -> str:
         return (x_tenant_id or "demo-tenant").strip() or "demo-tenant"
@@ -338,6 +346,74 @@ def create_app() -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"checkout failed: {exc}") from exc
 
+    def _resolve_checkout_total(customer_id: str, items: list[dict[str, Any]], tenant: str) -> tuple[float, list[dict[str, Any]]]:
+        # Resolves each line item through the ERP's personalized pricing engine (condition
+        # records -- see wavestore_erp_api's /erp/pricing/resolve-batch) so the amount a payment
+        # provider is asked to charge always matches what the ERP order will actually total,
+        # including any customer/product-hierarchy-based discount the shopper is entitled to.
+        bearer = f"Bearer {issue_token('wavestore-erp-api', tenant, 'wave.shopper', ['erp.read'])}"
+        product_ids = [str(item.get("productId") or "") for item in items if item.get("productId")]
+        try:
+            resolved = _json_request(
+                f"{erp_api}/erp/pricing/resolve-batch",
+                method="POST",
+                body={"productIds": product_ids, "customerId": customer_id or None},
+                headers={"Authorization": bearer, "X-Tenant-Id": tenant},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"pricing resolution failed: {exc}") from exc
+        price_by_product = {row["productId"]: row["price"] for row in resolved.get("prices", [])}
+        total = 0.0
+        priced_items: list[dict[str, Any]] = []
+        for item in items:
+            product_id = str(item.get("productId") or "")
+            qty = max(1, int(item.get("quantity") or 1))
+            price = price_by_product.get(product_id, 0.0)
+            total += qty * price
+            priced_items.append({"productId": product_id, "quantity": qty, "price": price})
+        return round(total, 2), priced_items
+
+    def do_checkout_providers() -> dict[str, Any]:
+        return {"providers": [{"name": p.name} for p in available_providers()]}
+
+    def do_checkout_init(customer_id: str, items: list[dict[str, Any]], provider_name: str, tenant: str) -> dict[str, Any]:
+        if not items:
+            raise HTTPException(status_code=400, detail="checkout requires items[]")
+        total, priced_items = _resolve_checkout_total(customer_id, items, tenant)
+        provider = get_provider(provider_name)
+        checkout_ref = f"chk-{os.urandom(6).hex()}"
+        try:
+            intent = provider.create_intent(checkout_ref, total, "GBP", {"customerId": customer_id or "guest"})
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"{provider.name} payment intent creation failed: {exc}") from exc
+        _pending_checkouts[checkout_ref] = {
+            "customerId": customer_id or "guest",
+            "items": priced_items,
+            "tenant": tenant,
+            "provider": provider.name,
+            "intentId": intent.intentId,
+            "total": total,
+        }
+        return {"checkoutRef": checkout_ref, "total": total, "currency": "GBP", "intent": intent.to_dict()}
+
+    def do_checkout_confirm(checkout_ref: str) -> dict[str, Any]:
+        pending = _pending_checkouts.get(checkout_ref)
+        if not pending:
+            raise HTTPException(status_code=404, detail="unknown or already-completed checkoutRef")
+        provider = get_provider(pending["provider"])
+        try:
+            capture: CaptureResult = provider.capture(pending["intentId"], {"customerId": pending["customerId"]})
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"{provider.name} payment capture failed: {exc}") from exc
+        if capture.status != "succeeded":
+            return {"accepted": False, "payment": capture.to_dict(), "reason": "payment not completed"}
+        # Payment is confirmed -- NOW place the real ERP order (with the already-resolved,
+        # personalized-pricing item list, as explicit prices so the ERP doesn't re-resolve and
+        # potentially race a pricing-condition change between init and confirm).
+        order_result = do_checkout(pending["customerId"], pending["items"], pending["tenant"])
+        del _pending_checkouts[checkout_ref]
+        return {"accepted": True, "payment": capture.to_dict(), **order_result}
+
     def do_account_orders(customer_id: str, tenant: str) -> dict[str, Any]:
         bearer = f"Bearer {issue_token('wavestore-erp-api', tenant, 'wave.shopper', ['erp.read', 'erp.order'])}"
         try:
@@ -439,10 +515,37 @@ def create_app() -> FastAPI:
         authorization: Annotated[str | None, Header()] = None,
         x_tenant_id: Annotated[str | None, Header()] = None,
     ) -> dict[str, Any]:
+        # Single-call checkout -- kept for backward compatibility, always uses the "native"
+        # provider (no external payment gateway), exactly as before this module existed. New
+        # integrations should use the two-phase /v2/checkout/init + /v2/checkout/confirm flow
+        # below, which supports Stripe/PayPal/any future provider.
         tenant = tenant_value(x_tenant_id)
         customer_id = str(payload.get("customerId") or "guest")
         items = payload.get("items") if isinstance(payload.get("items"), list) else []
         return do_checkout(customer_id, items, tenant)
+
+    @app.get("/v2/checkout/providers")
+    async def v2_checkout_providers() -> dict[str, Any]:
+        return do_checkout_providers()
+
+    @app.post("/v2/checkout/init")
+    async def v2_checkout_init(
+        payload: dict[str, Any],
+        authorization: Annotated[str | None, Header()] = None,
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        tenant = tenant_value(x_tenant_id)
+        customer_id = str(payload.get("customerId") or "guest")
+        items = payload.get("items") if isinstance(payload.get("items"), list) else []
+        provider_name = str(payload.get("provider") or "native")
+        return do_checkout_init(customer_id, items, provider_name, tenant)
+
+    @app.post("/v2/checkout/confirm")
+    async def v2_checkout_confirm(payload: dict[str, Any]) -> dict[str, Any]:
+        checkout_ref = str(payload.get("checkoutRef") or "")
+        if not checkout_ref:
+            raise HTTPException(status_code=400, detail="checkoutRef is required")
+        return do_checkout_confirm(checkout_ref)
 
     @app.get("/v2/account/orders")
     async def v2_account_orders(
