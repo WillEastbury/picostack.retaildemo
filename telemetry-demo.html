@@ -236,10 +236,15 @@
   <div class="container mt-4 page-mode-basket-only d-none">
     <h2 class="mb-3">Your basket</h2>
     <div id="basketPanel"></div>
-    <div class="d-flex gap-2 mt-3">
+    <div class="d-flex align-items-center gap-2 mt-3 flex-wrap">
+      <label for="paymentProvider" class="small text-body-secondary mb-0">Pay with</label>
+      <select id="paymentProvider" class="form-select form-select-sm" style="max-width:200px;">
+        <option value="native">WaveStore (native)</option>
+      </select>
       <button id="checkoutBtn" class="btn btn-primary">Proceed to checkout</button>
       <button id="clearBasketBtn" class="btn btn-outline-danger">Clear basket</button>
     </div>
+    <div id="checkoutStatus" class="small text-body-secondary mt-2"></div>
   </div>
 
   <!-- PAGE: Account -->
@@ -391,23 +396,53 @@
       persistBasket();
     }
     function clearBasket() { state.basket = []; persistBasket(); renderBasketPage(); }
+
+    const PROVIDER_LABELS = { native: "WaveStore (native)", stripe: "Card (Stripe)", paypal: "PayPal" };
+    async function loadPaymentProviders() {
+      const sel = el("paymentProvider");
+      if (!sel) return;
+      try {
+        const data = await api("/v2/checkout/providers");
+        const providers = (data?.providers || []).map(p => p.name);
+        if (!providers.length) return; // keep the static "native" fallback option
+        sel.innerHTML = providers.map(name => `<option value="${esc(name)}">${esc(PROVIDER_LABELS[name] || name)}</option>`).join("");
+      } catch { /* keep the static native-only fallback already in the markup */ }
+    }
+
     async function checkout() {
       if (!state.basket.length) return;
-      const payload = {
-        customerId: state.authUser || "guest",
-        items: state.basket.map(i => ({ productId: i.productId, quantity: i.quantity }))
-      };
+      const provider = el("paymentProvider")?.value || "native";
+      const status = el("checkoutStatus");
+      const items = state.basket.map(i => ({ productId: i.productId, quantity: i.quantity }));
+      const customerId = state.authUser || "guest";
       try {
-        const resp = await api("/v2/checkout", "POST", payload);
+        if (status) status.textContent = "Creating payment...";
+        const init = await api("/v2/checkout/init", "POST", { customerId, items, provider });
+        // Real gateways (Stripe/PayPal) return a clientSecret/approvalUrl here for the buyer to
+        // complete payment in the browser BEFORE confirm is called -- the native provider
+        // resolves instantly (status: "succeeded" already), so confirm can be called right away.
+        if (init?.intent?.status !== "succeeded" && (init?.intent?.clientSecret || init?.intent?.approvalUrl)) {
+          if (status) status.textContent = `Complete your ${provider} payment, then we'll finish your order...`;
+          // Placeholder for the real Stripe.js/PayPal JS SDK confirmation step -- once wired,
+          // this branch calls stripe.confirmCardPayment(init.intent.clientSecret) or redirects
+          // to init.intent.approvalUrl, and only calls /v2/checkout/confirm after that succeeds.
+        }
+        const resp = await api("/v2/checkout/confirm", "POST", { checkoutRef: init.checkoutRef });
+        if (!resp?.accepted) {
+          if (status) status.textContent = `Payment not completed: ${resp?.reason || "unknown reason"}`;
+          return;
+        }
         if (resp?.order) {
           state.orders.unshift(resp.order);
           saveJson("wavestore-orders", state.orders);
         }
-        for (const item of state.basket) trackEvent("purchase", { productId: item.productId });
+        for (const item of items) trackEvent("purchase", { productId: item.productId });
         clearBasket();
         await loadAccountOrders();
-        alert("Order placed in ERP successfully.");
+        if (status) status.textContent = "";
+        alert(`Order placed in ERP successfully (paid via ${resp.payment?.provider || provider}).`);
       } catch (err) {
+        if (status) status.textContent = "";
         alert(`Checkout failed: ${err.message}`);
       }
     }
@@ -1329,6 +1364,7 @@
 
     if (pageMode === "basket") {
       renderBasketPage();
+      loadPaymentProviders();
       el("checkoutBtn")?.addEventListener("click", async () => { await checkout(); renderBasketPage(); });
       el("clearBasketBtn")?.addEventListener("click", () => { clearBasket(); });
     }
