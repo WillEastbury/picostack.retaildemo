@@ -32,6 +32,12 @@ class ERPState:
     # CRUD/resolution code (see _hierarchy_store/_node_path/_node_ancestors) serves both.
     product_hierarchy: dict[str, dict[str, Any]] = field(default_factory=dict)
     customer_hierarchy: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # SAP condition-technique / Sage Line 500-1000 "price record" style pricing: each record
+    # targets a (product scope, customer scope) pair -- a specific SKU or a product-hierarchy
+    # node, crossed with a specific customer or a customer-hierarchy node (or "all customers") --
+    # rather than one flat price per product. See _resolve_pricing_condition for the specificity-
+    # based resolution order (most specific match wins, same principle as SAP condition records).
+    pricing_conditions: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class ERPStore:
@@ -386,7 +392,100 @@ def create_app() -> FastAPI:
                 pass
         return 0.0
 
-    def _normalize_order_items(items: list[Any]) -> tuple[list[dict[str, Any]], float]:
+    # --- SAP condition-technique / Sage price-record style pricing conditions ---
+    def _condition_product_specificity(condition: dict[str, Any], product_id: str) -> int | None:
+        # Returns None if this condition does not apply to product_id at all; otherwise a
+        # specificity score where higher = more specific (an exact SKU match always outranks any
+        # hierarchy-level match, and among hierarchy matches a deeper node outranks a shallower
+        # one -- the same "most specific wins" principle as SAP's condition access sequence).
+        target_product_id = condition.get("productId")
+        if target_product_id:
+            return 1000 if _normalize_product_id(str(target_product_id)) == _normalize_product_id(product_id) else None
+        node_id = condition.get("productNodeId")
+        if not node_id:
+            return 0  # no product criterion at all -- applies to every product (lowest specificity)
+        product_row = store.state.products.get(product_id)
+        product_node = product_row.get("hierarchyNodeId") if product_row else None
+        if not product_node:
+            return None
+        ancestor_ids = _node_ancestors("product", product_node)
+        if node_id not in ancestor_ids:
+            return None
+        return _node_level("product", node_id)  # deeper node (higher level number) = more specific
+
+    def _condition_customer_specificity(condition: dict[str, Any], customer_id: str | None) -> int | None:
+        target_customer_id = condition.get("customerId")
+        if target_customer_id:
+            if not customer_id:
+                return None
+            return 1000 if _normalize_product_id(str(target_customer_id)) == _normalize_product_id(customer_id) else None
+        node_id = condition.get("customerNodeId")
+        if not node_id:
+            return 0  # applies to all customers (lowest specificity, but still a valid match)
+        if not customer_id:
+            return None
+        customer_row = store.state.customers.get(customer_id)
+        customer_node = customer_row.get("hierarchyNodeId") if customer_row else None
+        if not customer_node:
+            return None
+        ancestor_ids = _node_ancestors("customer", customer_node)
+        if node_id not in ancestor_ids:
+            return None
+        return _node_level("customer", node_id)
+
+    def _resolve_pricing_condition(product_id: str, customer_id: str | None) -> dict[str, Any] | None:
+        best: dict[str, Any] | None = None
+        best_score = (-1, -1, -1)
+        for condition in store.state.pricing_conditions.values():
+            product_score = _condition_product_specificity(condition, product_id)
+            if product_score is None:
+                continue
+            customer_score = _condition_customer_specificity(condition, customer_id)
+            if customer_score is None:
+                continue
+            # Tie-break, in order: total specificity, then an explicit operator-set priority
+            # (higher wins), then most-recently-created record wins (so a newer override beats
+            # an older one of otherwise identical specificity).
+            score = (product_score + customer_score, int(condition.get("priority") or 0), condition.get("_seq", 0))
+            if score > best_score:
+                best_score = score
+                best = condition
+        return best
+
+    def _apply_condition_to_price(base_price: float, condition: dict[str, Any]) -> float:
+        price_type = str(condition.get("priceType") or "fixed")
+        value = float(condition.get("value") or 0.0)
+        if price_type == "fixed":
+            return round(value, 2)
+        if price_type == "discountPercent":
+            return round(base_price * (1.0 - value / 100.0), 2)
+        if price_type == "discountAmount":
+            return round(max(0.0, base_price - value), 2)
+        return round(base_price, 2)
+
+    def _resolve_personalized_price(product_id: str, customer_id: str | None) -> dict[str, Any]:
+        base_price = _resolve_item_price(product_id)
+        condition = _resolve_pricing_condition(product_id, customer_id)
+        if not condition:
+            return {"productId": product_id, "customerId": customer_id, "basePrice": base_price, "price": base_price, "conditionApplied": False}
+        final_price = _apply_condition_to_price(base_price, condition)
+        return {
+            "productId": product_id,
+            "customerId": customer_id,
+            "basePrice": base_price,
+            "price": final_price,
+            "conditionApplied": True,
+            "conditionId": condition.get("id"),
+            "priceType": condition.get("priceType"),
+            "value": condition.get("value"),
+            "savings": round(base_price - final_price, 2),
+        }
+
+    def _normalize_order_items(items: list[Any], customer_id: str | None = None) -> tuple[list[dict[str, Any]], float]:
+        # When an explicit item price isn't provided, resolve through the personalized pricing
+        # engine (condition records) rather than just the flat catalog price -- so an order
+        # placed by a customer who has a matching pricing condition record is actually charged
+        # their negotiated price, not the base list price.
         total = 0.0
         normalized_items: list[dict[str, Any]] = []
         for item in items:
@@ -394,7 +493,10 @@ def create_app() -> FastAPI:
                 continue
             product_id = str(item.get("productId") or "")
             qty = max(1, int(item.get("quantity") or 1))
-            price = _resolve_item_price(product_id, item.get("price"))
+            if item.get("price") is not None:
+                price = _resolve_item_price(product_id, item.get("price"))
+            else:
+                price = _resolve_personalized_price(product_id, customer_id).get("price", 0.0)
             total += qty * price
             normalized_items.append({"productId": product_id, "quantity": qty, "price": price})
         return normalized_items, round(total, 2)
@@ -528,6 +630,92 @@ def create_app() -> FastAPI:
         store._save()
         return {"accepted": True, "pricing": row}
 
+    # --- Pricing condition records (SAP condition technique / Sage price records) ---
+    @app.get("/erp/pricing/conditions")
+    async def list_pricing_conditions(context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        rows = sorted(store.state.pricing_conditions.values(), key=lambda c: c.get("_seq", 0))
+        return {"conditions": rows}
+
+    @app.post("/erp/pricing/conditions")
+    async def upsert_pricing_condition(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        condition_id = str(payload.get("id") or f"cond-{uuid4().hex[:8]}")
+        product_id = payload.get("productId")
+        product_node_id = payload.get("productNodeId")
+        if product_id and product_node_id:
+            return {"error": "specify either productId or productNodeId, not both"}
+        if product_node_id and product_node_id not in store.state.product_hierarchy:
+            return {"error": f"productNodeId {product_node_id!r} does not exist in the product hierarchy"}
+        customer_id = payload.get("customerId")
+        customer_node_id = payload.get("customerNodeId")
+        if customer_id and customer_node_id:
+            return {"error": "specify either customerId or customerNodeId, not both"}
+        if customer_node_id and customer_node_id not in store.state.customer_hierarchy:
+            return {"error": f"customerNodeId {customer_node_id!r} does not exist in the customer hierarchy"}
+        price_type = str(payload.get("priceType") or "fixed")
+        if price_type not in ("fixed", "discountPercent", "discountAmount"):
+            return {"error": "priceType must be 'fixed', 'discountPercent', or 'discountAmount'"}
+        existing = store.state.pricing_conditions.get(condition_id)
+        row = {
+            "id": condition_id,
+            "productId": product_id,
+            "productNodeId": product_node_id,
+            "customerId": customer_id,
+            "customerNodeId": customer_node_id,
+            "priceType": price_type,
+            "value": float(payload.get("value") or 0.0),
+            "priority": int(payload.get("priority") or 0),
+            "validFrom": payload.get("validFrom"),
+            "validTo": payload.get("validTo"),
+            "description": str(payload.get("description") or ""),
+            "_seq": existing["_seq"] if existing else len(store.state.pricing_conditions),
+        }
+        store.state.pricing_conditions[condition_id] = row
+        store._save()
+        return {"accepted": True, "condition": row}
+
+    @app.get("/erp/pricing/conditions/{condition_id}")
+    async def get_pricing_condition(condition_id: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        row = store.state.pricing_conditions.get(condition_id)
+        if not row:
+            return {"error": "condition not found"}
+        return {"condition": row}
+
+    @app.delete("/erp/pricing/conditions/{condition_id}")
+    async def delete_pricing_condition(condition_id: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.write")
+        row = store.state.pricing_conditions.pop(condition_id, None)
+        if not row:
+            return {"error": "condition not found"}
+        store._save()
+        return {"accepted": True, "deleted": row}
+
+    @app.post("/erp/pricing/resolve")
+    async def resolve_pricing(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        # The endpoint the storefront calls to answer "what does THIS customer pay for THIS
+        # product right now" -- resolves the best-matching condition record (see
+        # _resolve_pricing_condition) and returns both the base list price and the final
+        # personalized price, so the UI can show "was £X, now £Y" when a condition applies.
+        require_scope(context, "erp.read")
+        product_id = str(payload.get("productId") or "").strip()
+        if not product_id:
+            return {"error": "productId is required"}
+        customer_id = payload.get("customerId")
+        return _resolve_personalized_price(product_id, str(customer_id) if customer_id else None)
+
+    @app.post("/erp/pricing/resolve-batch")
+    async def resolve_pricing_batch(payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        # Batch form of /erp/pricing/resolve -- lets a storefront page listing many products
+        # (a category/browse page, a basket) fetch personalized pricing for all of them in one
+        # round-trip instead of one call per product.
+        require_scope(context, "erp.read")
+        product_ids = payload.get("productIds") if isinstance(payload.get("productIds"), list) else []
+        customer_id = payload.get("customerId")
+        customer_id = str(customer_id) if customer_id else None
+        return {"prices": [_resolve_personalized_price(str(pid), customer_id) for pid in product_ids if pid]}
+
     @app.get("/erp/offers")
     async def list_offers(context=Depends(erp_context)) -> dict[str, Any]:
         require_scope(context, "erp.read")
@@ -636,7 +824,7 @@ def create_app() -> FastAPI:
             items = row.get("items")
             if not isinstance(items, list):
                 continue
-            normalized_items, total = _normalize_order_items(items)
+            normalized_items, total = _normalize_order_items(items, customer_id=str(row.get("customerId") or ""))
             if normalized_items != items or round(float(row.get("total") or 0.0), 2) != total:
                 row["items"] = normalized_items
                 row["total"] = total
@@ -663,7 +851,7 @@ def create_app() -> FastAPI:
         if not items:
             return {"error": "items are required"}
         order_id = f"ord-{uuid4().hex[:10]}"
-        normalized_items, total = _normalize_order_items(items)
+        normalized_items, total = _normalize_order_items(items, customer_id=customer_id)
         for item in normalized_items:
             product_id = str(item.get("productId") or "")
             qty = max(1, int(item.get("quantity") or 1))
@@ -695,7 +883,7 @@ def create_app() -> FastAPI:
             return {"error": "order not found"}
         updated = {**existing, **payload, "id": order_id}
         if isinstance(updated.get("items"), list):
-            normalized_items, total = _normalize_order_items(updated["items"])
+            normalized_items, total = _normalize_order_items(updated["items"], customer_id=str(updated.get("customerId") or ""))
             updated["items"] = normalized_items
             updated["total"] = total
         store.state.orders[order_id] = updated
