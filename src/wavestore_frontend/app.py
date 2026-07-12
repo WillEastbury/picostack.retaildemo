@@ -9,6 +9,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import Request as FastAPIRequest
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from retail_v2.auth import TokenIssuer
@@ -224,6 +225,44 @@ def create_app() -> FastAPI:
         if not token:
             raise HTTPException(status_code=502, detail="STS login returned no access_token")
         return {"access_token": token, "token_type": "Bearer", "username": username, "tenant": tenant}
+
+    @app.get("/v2/auth/sso/providers")
+    async def v2_auth_sso_providers() -> dict[str, Any]:
+        # Proxied (not called directly by browser JS) so the STS's internal URL stays a server-
+        # side implementation detail, same principle as every other /v2/* proxy in this file.
+        try:
+            return _json_request(f"{sts}/sts/sso/providers")
+        except Exception:
+            return {"providers": []}  # SSO is optional -- no configured providers is a normal, working state
+
+    @app.get("/v2/auth/sso/{provider_name}/start")
+    async def v2_auth_sso_start(
+        provider_name: str,
+        request: FastAPIRequest,
+        redirectUri: str = "/account",
+        audience: str = "wavestore-frontend",
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ):
+        # A real browser-navigation redirect (not a fetch/JSON call) straight to wave-sts's own
+        # SSO start endpoint, which then redirects again to Google/Microsoft/Apple. wave-sts
+        # itself redirects the browser back to redirectUri (an absolute URL on THIS frontend,
+        # e.g. the account page) with the issued token in a URL fragment once the provider flow
+        # completes -- see wave_sts's _sso_complete.
+        from fastapi.responses import RedirectResponse
+
+        tenant = tenant_value(x_tenant_id)
+        if redirectUri.startswith("http"):
+            absolute_redirect = redirectUri
+        else:
+            # Reconstruct the public-facing origin from the incoming request rather than a
+            # hardcoded env var -- works correctly behind the ingress regardless of which of the
+            # platform's several public hostnames the shopper is actually browsing on.
+            host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.hostname or ""
+            scheme = request.headers.get("x-forwarded-proto") or request.url.scheme or "https"
+            absolute_redirect = f"{scheme}://{host}{redirectUri}"
+        params = {"audience": audience, "tenant": tenant, "redirectUri": absolute_redirect}
+        target = f"{sts}/sts/sso/{provider_name}/start?" + "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
+        return RedirectResponse(target)
 
     def do_search(query: Any, page_size: Any, filters: dict[str, Any], tenant: str, visitor_id: Any = None) -> dict[str, Any]:
         # /search/query is a public, read-only endpoint on wavesearch-api (no auth required) —

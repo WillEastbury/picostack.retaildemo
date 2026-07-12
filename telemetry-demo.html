@@ -259,6 +259,7 @@
           <div class="col-sm-3"><input id="loginPassword" class="form-control form-control-sm" placeholder="Password" value="demo123!" type="password" /></div>
           <div class="col-sm-1 d-grid"><button id="loginBtn" class="btn btn-primary btn-sm">Sign in</button></div>
         </div>
+        <div id="ssoButtons" class="d-flex gap-2 mb-2"></div>
         <p id="accountAuthStatus" class="text-body-secondary small mb-0">Signed out</p>
       </div>
     </div>
@@ -810,6 +811,42 @@
       saveJson("wavestore-auth-tenant", state.authTenant);
       el("accountAuthStatus").textContent = `Signed in as ${user}`;
       await loadAccountOrders();
+    }
+
+    // SSO (Google/Microsoft/Apple, alongside native username/password above): buttons are
+    // populated dynamically from whichever providers wave-sts actually has credentials
+    // configured for -- a deployment with none configured shows no SSO buttons at all, exactly
+    // as before this feature existed.
+    async function loadSsoProviders() {
+      const container = el("ssoButtons");
+      if (!container) return;
+      try {
+        const data = await api("/v2/auth/sso/providers");
+        const providers = data?.providers || [];
+        if (!providers.length) { container.innerHTML = ""; return; }
+        container.innerHTML = providers.map(p =>
+          `<a class="btn btn-outline-secondary btn-sm" href="/v2/auth/sso/${encodeURIComponent(p.name)}/start?redirectUri=${encodeURIComponent("/account")}&tenant=${encodeURIComponent(state.authTenant || "demo-tenant")}">Sign in with ${esc(p.displayName)}</a>`
+        ).join("");
+      } catch { container.innerHTML = ""; }
+    }
+
+    // After an SSO redirect back from wave-sts, the issued token arrives in the URL fragment
+    // (never sent to any server, unlike a query string) -- read it once on page load, store it
+    // exactly like a native /v2/auth/login response, then strip the fragment from the URL so a
+    // page refresh/share link doesn't carry the token around.
+    function captureSsoTokenFromHash() {
+      if (!location.hash || !location.hash.includes("access_token=")) return false;
+      const params = new URLSearchParams(location.hash.slice(1));
+      const token = params.get("access_token");
+      if (!token) return false;
+      state.authToken = token;
+      state.authUser = params.get("subject") || "sso-user";
+      state.authTenant = params.get("tenant") || "demo-tenant";
+      saveJson("wavestore-auth-token", state.authToken);
+      saveJson("wavestore-auth-user", state.authUser);
+      saveJson("wavestore-auth-tenant", state.authTenant);
+      history.replaceState(null, "", location.pathname + location.search);
+      return true;
     }
 
     async function loadAccountOrders() {
@@ -1399,7 +1436,11 @@
 
     if (pageMode === "account") {
       el("loginBtn")?.addEventListener("click", () => loginWithSts().catch(err => { el("accountAuthStatus").textContent = err.message; }));
-      if (state.authToken) {
+      loadSsoProviders();
+      if (captureSsoTokenFromHash()) {
+        el("accountAuthStatus").textContent = `Signed in as ${state.authUser} (SSO)`;
+        loadAccountOrders();
+      } else if (state.authToken) {
         el("accountAuthStatus").textContent = `Signed in as ${state.authUser}`;
         loadAccountOrders();
       }

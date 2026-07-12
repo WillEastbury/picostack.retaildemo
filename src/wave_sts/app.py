@@ -5,16 +5,19 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import tempfile
+import time
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from retail_v2.models import TenantContext
 from wave_shared.auth import context_from_auth, issuer_for_audience, require_scope
+from wave_sts import oidc
 
 STS_UI_HTML = Path(__file__).with_name("wave_sts_ui.html")
 
@@ -200,6 +203,42 @@ def create_app() -> FastAPI:
         if item.strip()
     }
 
+    # SSO (federated login): pending authorization requests, keyed by a random state token, so
+    # the callback knows which audience/tenant/redirect a login was for and can reject any
+    # callback whose state we didn't just hand out (CSRF protection for the OAuth flow). Short-
+    # lived by nature (a login round-trip takes seconds), so in-memory is fine.
+    _pending_sso: dict[str, dict[str, Any]] = {}
+    SSO_STATE_TTL_SECONDS = 600
+    STS_PUBLIC_URL = os.environ.get("WAVE_STS_PUBLIC_URL", "http://127.0.0.1:8801").rstrip("/")
+    # Default scopes/audiences granted to a brand-new SSO-provisioned shopper account -- mirrors
+    # the "wave.user" demo account's grants (a real shopper never needs sts.* or erp.write/admin
+    # scopes just for signing in and shopping).
+    SSO_DEFAULT_AUDIENCES = ["wavesearch-api", "wavestore-erp-api", "wavestore-frontend"]
+    SSO_DEFAULT_SCOPES = ["search.query", "events.write", "erp.read", "erp.order"]
+
+    def _provision_sso_user(provider_name: str, subject: str, email: str | None, display_name: str | None) -> str:
+        # One durable internal wave-sts account per (provider, external subject) pair. Username
+        # is a deterministic, collision-proof key derived from the provider+subject rather than
+        # the (mutable, sometimes absent) email, so linking is stable even if the shopper changes
+        # their email with the provider later. ensure_user() is idempotent -- repeat logins never
+        # create duplicate accounts or downgrade previously-granted scopes.
+        username = f"sso:{provider_name}:{subject}"
+        user = users.ensure_user(username, secrets.token_urlsafe(24), SSO_DEFAULT_AUDIENCES, SSO_DEFAULT_SCOPES)
+        profile_changed = False
+        if email and user.get("ssoEmail") != email:
+            user["ssoEmail"] = email
+            profile_changed = True
+        if display_name and user.get("ssoDisplayName") != display_name:
+            user["ssoDisplayName"] = display_name
+            profile_changed = True
+        if user.get("ssoProvider") != provider_name:
+            user["ssoProvider"] = provider_name
+            profile_changed = True
+        if profile_changed:
+            users.users[username] = user
+            users._save()
+        return username
+
     def validate_scopes(audience: str, scopes: list[str]) -> list[str]:
         allowed_scopes = scope_policy.get(audience, frozenset())
         invalid_scopes = sorted({scope for scope in scopes if scope not in allowed_scopes})
@@ -337,6 +376,77 @@ document.getElementById("validateBtn").addEventListener("click", () => {
             "kid": os.environ.get("WAVE_STS_KID", "wave-sts-hs256-v1"),
             "audiences": sorted(allowed),
         }
+
+    # --- SSO (federated login): Google, Microsoft, Apple, alongside native username/password ---
+    @app.get("/sts/sso/providers")
+    async def sso_providers() -> dict[str, Any]:
+        return {"providers": [{"name": p.name, "displayName": p.display_name} for p in oidc.available_providers()]}
+
+    @app.get("/sts/sso/{provider_name}/start")
+    async def sso_start(provider_name: str, audience: str = "wavestore-frontend", tenant: str = "demo-tenant", redirectUri: str = "/") -> RedirectResponse:
+        provider = oidc.PROVIDERS.get(provider_name)
+        if not provider or not provider.is_configured():
+            raise HTTPException(status_code=404, detail=f"SSO provider not configured: {provider_name}")
+        if audience not in allowed:
+            raise HTTPException(status_code=400, detail=f"audience not allowed: {audience}")
+        state = secrets.token_urlsafe(24)
+        _pending_sso[state] = {
+            "provider": provider_name,
+            "audience": audience,
+            "tenant": tenant,
+            "redirectUri": redirectUri,
+            "expiresAt": time.time() + SSO_STATE_TTL_SECONDS,
+        }
+        callback_url = f"{STS_PUBLIC_URL}/sts/sso/{provider_name}/callback"
+        return RedirectResponse(oidc.build_authorize_url(provider, callback_url, state))
+
+    async def _sso_complete(provider_name: str, code: str, state: str) -> RedirectResponse:
+        pending = _pending_sso.pop(state, None)
+        if not pending or pending.get("provider") != provider_name or pending["expiresAt"] < time.time():
+            raise HTTPException(status_code=400, detail="invalid, expired, or already-used SSO state")
+        provider = oidc.PROVIDERS.get(provider_name)
+        if not provider or not provider.is_configured():
+            raise HTTPException(status_code=404, detail=f"SSO provider not configured: {provider_name}")
+        callback_url = f"{STS_PUBLIC_URL}/sts/sso/{provider_name}/callback"
+        try:
+            token_response = oidc.exchange_code(provider, code, callback_url)
+            id_token = str(token_response.get("id_token") or "")
+            if not id_token:
+                raise ValueError("provider token response contained no id_token")
+            claims = oidc.verify_provider_id_token(provider, id_token)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"{provider_name} SSO sign-in failed: {exc}") from exc
+        subject = str(claims.get("sub") or "")
+        email = claims.get("email")
+        display_name = claims.get("name") or (email.split("@")[0] if email else None)
+        username = _provision_sso_user(provider_name, subject, email, display_name)
+        audience = pending["audience"]
+        scopes = sorted(set(SSO_DEFAULT_SCOPES).intersection(scope_policy.get(audience, frozenset())))
+        token = issuer_for_audience(audience).issue(username, pending["tenant"], scopes, ttl_seconds=3600)
+        # Deliver the token back to the storefront the same way an implicit-flow redirect would:
+        # as a URL fragment (never sent to any server, including this one, on the next request)
+        # for the page's own JS to read via location.hash and store exactly like a native
+        # /sts/login response -- no server-side session/cookie needed, matching this platform's
+        # existing bearer-token-in-JS pattern.
+        fragment = (
+            f"access_token={token}&token_type=Bearer&expires_in=3600"
+            f"&subject={username}&provider={provider_name}&tenant={pending['tenant']}"
+        )
+        return RedirectResponse(f"{pending['redirectUri']}#{fragment}")
+
+    @app.get("/sts/sso/{provider_name}/callback")
+    async def sso_callback_get(provider_name: str, code: str, state: str) -> RedirectResponse:
+        return await _sso_complete(provider_name, code, state)
+
+    @app.post("/sts/sso/{provider_name}/callback")
+    async def sso_callback_post(provider_name: str, request: Request) -> RedirectResponse:
+        # Apple deliberately uses response_mode=form_post -- the authorization result (code,
+        # state) arrives as a POSTed form body, not GET query params, so this needs its own
+        # handler even though it does the exact same work as the GET callback above.
+        form = await request.form()
+        code = str(form.get("code") or "")
+        state = str(form.get("state") or "")
+        return await _sso_complete(provider_name, code, state)
 
     @app.post("/sts/login")
     async def login(payload: dict[str, Any], x_tenant_id: Annotated[str | None, Header()] = None) -> dict[str, Any]:
