@@ -55,8 +55,8 @@ class RetailV2Service:
         route = self.route(context, key)
         return self.append_writer.append_one(self.tenant_paths(context), "rules", route, "control_update", payload)
 
-    def search(self, query: str, limit: int = 10) -> dict:
-        return self.search_engine.search(self.runtime, query, limit)
+    def search(self, query: str, limit: int = 10, filters: dict | None = None) -> dict:
+        return self.search_engine.search(self.runtime, query, limit, filters)
 
     def recommend(self, product_id: str | None = None, limit: int = 10) -> dict:
         return self.search_engine.recommend(self.runtime, product_id, limit)

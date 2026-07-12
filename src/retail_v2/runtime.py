@@ -80,17 +80,87 @@ class RuntimeBuilder:
 
 
 class SearchEngine:
-    def search(self, runtime: CatalogRuntime, query: str, limit: int = 10) -> dict:
+    def search(self, runtime: CatalogRuntime, query: str, limit: int = 10, filters: dict | None = None) -> dict:
+        filters = filters if isinstance(filters, dict) else {}
         terms = tokenize(query)
-        if not terms:
-            return {"query": query, "totalSize": 0, "results": []}
-        candidates: set[str] = set()
-        for term in terms:
-            candidates.update(runtime.postings.get(term, ()))
+        if terms:
+            candidates: set[str] = set()
+            for term in terms:
+                candidates.update(runtime.postings.get(term, ()))
+        else:
+            candidates = set(runtime.products_by_id.keys())
+
+        def _norm(value: str) -> str:
+            return value.strip().lower()
+
+        def _to_num(value) -> float | None:
+            if value is None:
+                return None
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        category_filter = _norm(str(filters.get("category") or ""))
+        brand_filter = _norm(str(filters.get("brand") or ""))
+        availability_filter = _norm(str(filters.get("availability") or ""))
+        min_price = _to_num(filters.get("minPrice"))
+        max_price = _to_num(filters.get("maxPrice"))
+        min_stock = _to_num(filters.get("minStock"))
+        max_stock = _to_num(filters.get("maxStock"))
+        tag_filter = _norm(str(filters.get("tag") or ""))
+
+        filtered_candidates: list[str] = []
+        for product_id in candidates:
+            product = runtime.products_by_id[product_id]
+            categories = [c.lower() for c in product.categories]
+            brands = [b.lower() for b in product.brands]
+            tags = [t.lower() for t in product.tags]
+            availability = str(product.availability or "IN_STOCK").strip().lower()
+            stock = int(product.available_quantity or 0)
+            price = product.price
+            if price is None:
+                raw_price_info = product.raw.get("priceInfo") if isinstance(product.raw.get("priceInfo"), dict) else {}
+                price = raw_price_info.get("price")
+            try:
+                price_num = float(price) if price is not None else 0.0
+            except (TypeError, ValueError):
+                price_num = 0.0
+
+            if category_filter and not any(category_filter in c for c in categories):
+                continue
+            if brand_filter and not any(brand_filter in b for b in brands):
+                continue
+            if tag_filter and not any(tag_filter in t for t in tags):
+                continue
+            if availability_filter and availability != availability_filter:
+                continue
+            if min_price is not None and price_num < min_price:
+                continue
+            if max_price is not None and price_num > max_price:
+                continue
+            if min_stock is not None and stock < min_stock:
+                continue
+            if max_stock is not None and stock > max_stock:
+                continue
+            filtered_candidates.append(product_id)
+
+        if not filtered_candidates:
+            return {
+                "query": query,
+                "totalSize": 0,
+                "results": [],
+                "facets": {"categories": [], "brands": [], "availability": []},
+                "appliedFilters": filters,
+            }
         scores = []
         total_docs = max(1, len(runtime.products_by_id))
         avg_len = sum(runtime.doc_lengths.values()) / total_docs if total_docs else 1
-        for product_id in candidates:
+        for product_id in filtered_candidates:
             score = 0.0
             freqs = runtime.term_frequency[product_id]
             doc_len = runtime.doc_lengths[product_id]
@@ -107,7 +177,39 @@ class SearchEngine:
         for score, product_id in scores[:limit]:
             product = runtime.products_by_id[product_id]
             results.append({"id": product.id, "title": product.title, "score": round(score, 4), "product": product.raw})
-        return {"query": query, "totalSize": len(scores), "results": results}
+
+        category_counts: Counter[str] = Counter()
+        brand_counts: Counter[str] = Counter()
+        availability_counts: Counter[str] = Counter()
+        for _, product_id in scores:
+            product = runtime.products_by_id[product_id]
+            for category in product.categories:
+                if category:
+                    category_counts[category] += 1
+            for brand in product.brands:
+                if brand:
+                    brand_counts[brand] += 1
+            raw = product.raw
+            availability = str(raw.get("availability") or "")
+            if not availability:
+                qty = int(raw.get("availableQuantity") or 0)
+                availability = "OUT_OF_STOCK" if qty <= 0 else "IN_STOCK"
+            availability_counts[availability] += 1
+
+        def _facet_rows(counter: Counter[str]) -> list[dict[str, int | str]]:
+            return [{"value": value, "count": count} for value, count in counter.most_common()]
+
+        return {
+            "query": query,
+            "totalSize": len(scores),
+            "results": results,
+            "facets": {
+                "categories": _facet_rows(category_counts),
+                "brands": _facet_rows(brand_counts),
+                "availability": _facet_rows(availability_counts),
+            },
+            "appliedFilters": filters,
+        }
 
     def recommend(self, runtime: CatalogRuntime, product_id: str | None = None, limit: int = 10) -> dict:
         product = runtime.products_by_id.get(product_id or "") if product_id else None

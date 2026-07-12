@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>WaveStore</title>
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css">
 </head>
 <body data-page="{{PAGE_MODE}}">
@@ -11,22 +13,44 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="/">WaveStore</a>
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+        <img src="/static/images/wavestore-hero-mini.jpg" alt="" width="28" height="28" class="rounded" style="object-fit:cover;">
+        WaveStore
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navContent">
-        <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0" role="search" onsubmit="return false">
-          <input id="query" class="form-control form-control-lg" placeholder="Search products, brands, categories..." />
+        <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0 position-relative" role="search" onsubmit="return false">
+          <input id="query" class="form-control form-control-lg" placeholder="Search products, brands, categories..." autocomplete="off" />
           <button id="searchBtn" class="btn btn-light ms-2" type="button">Search</button>
+          <div id="autocompleteDropdown" class="list-group position-absolute w-100 shadow-sm d-none" style="top:100%;left:0;z-index:1050;max-height:320px;overflow-y:auto;"></div>
         </form>
         <ul class="navbar-nav gap-2 align-items-center">
           <li class="nav-item"><a href="/account" class="btn btn-outline-light btn-sm">Account</a></li>
           <li class="nav-item"><a href="/basket" class="btn btn-warning btn-sm">Basket <span id="basketCount" class="badge text-bg-dark">0</span></a></li>
+          <li class="nav-item">
+            <button id="voiceMicBtn" class="btn btn-outline-light btn-sm rounded-circle" type="button" title="Talk to WaveStore" style="width:38px;height:38px;">
+              <span id="voiceMicIcon">🎤</span>
+            </button>
+          </li>
         </ul>
       </div>
     </div>
   </nav>
+
+  <!-- Voice assistant panel -->
+  <div id="voicePanel" class="d-none" style="position:fixed;top:70px;right:16px;width:320px;z-index:1050;">
+    <div class="card shadow">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold small"><span id="voiceStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#999;margin-right:6px;"></span>WaveStore Voice</div>
+          <button type="button" class="btn-close" id="voicePanelClose" aria-label="Close"></button>
+        </div>
+        <div id="voiceLog" class="small text-body-secondary" style="max-height:160px;overflow:auto;white-space:pre-wrap;">Say something like "find me a waterproof jacket" or "what's in my basket".</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Category bar -->
   <nav class="navbar navbar-expand bg-dark" data-bs-theme="dark">
@@ -34,6 +58,12 @@
       <ul class="navbar-nav flex-nowrap gap-1" id="categoryNav">
         <li class="nav-item"><span class="nav-link text-body-secondary small">Loading categories...</span></li>
       </ul>
+    </div>
+  </nav>
+  <!-- Subcategory bar: shown under the top-level category bar once a category with children is selected -->
+  <nav class="navbar navbar-expand bg-secondary-subtle py-1 d-none" id="subcategoryBar">
+    <div class="container overflow-auto">
+      <ul class="navbar-nav flex-nowrap gap-1" id="subcategoryNav"></ul>
     </div>
   </nav>
 
@@ -56,39 +86,51 @@
         </div>
       </div>
 
-      <!-- Static AI-generated offer banners (shown before catalogue loads) -->
+      <!-- Offer banners: shown as a loading placeholder until real offers arrive from the ERP -->
       <h5 class="mb-3">Featured offers</h5>
-      <div id="carouselOffers" class="carousel slide mb-4" data-bs-ride="carousel">
-        <div class="carousel-indicators">
-          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="0" class="active"></button>
-          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="1"></button>
-          <button type="button" data-bs-target="#carouselOffers" data-bs-slide-to="2"></button>
-        </div>
+      <div id="carouselOffers" class="carousel slide mb-3" data-bs-ride="carousel">
+        <div class="carousel-indicators" id="carouselIndicators"></div>
         <div class="carousel-inner rounded" id="carouselInner">
           <div class="carousel-item active">
-            <img src="/static/images/banner-summer-sale.jpg" class="d-block w-100" alt="Summer Sale" style="max-height:280px;object-fit:cover;">
-            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
-              <h5 class="mb-0">Summer Sale — Up to 40% off</h5>
-              <p class="small mb-0">Outdoor gear, audio &amp; more</p>
-            </div>
-          </div>
-          <div class="carousel-item">
-            <img src="/static/images/banner-new-arrivals.jpg" class="d-block w-100" alt="New Arrivals" style="max-height:280px;object-fit:cover;">
-            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
-              <h5 class="mb-0">New Arrivals This Week</h5>
-              <p class="small mb-0">Fresh picks from top brands</p>
-            </div>
-          </div>
-          <div class="carousel-item">
-            <img src="/static/images/banner-free-delivery.jpg" class="d-block w-100" alt="Free Delivery" style="max-height:280px;object-fit:cover;">
-            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded px-3 py-2">
-              <h5 class="mb-0">Free Next-Day Delivery</h5>
-              <p class="small mb-0">On orders over £40</p>
+            <div class="d-flex flex-column align-items-center justify-content-center bg-body-tertiary rounded" style="height:280px;">
+              <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+              <div class="text-body-secondary">Loading offers…</div>
             </div>
           </div>
         </div>
         <button class="carousel-control-prev" type="button" data-bs-target="#carouselOffers" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
         <button class="carousel-control-next" type="button" data-bs-target="#carouselOffers" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+      </div>
+
+      <!-- Search for offers/promotions (queries the in-memory promotions index in wavesearch-api) -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex gap-2 mb-2">
+            <input id="offerSearchInput" class="form-control" placeholder="Search offers, e.g. &quot;jackets&quot; or &quot;money back&quot;">
+            <button id="offerSearchBtn" class="btn btn-outline-primary text-nowrap" type="button">Search offers</button>
+          </div>
+          <div id="offerSearchResults" class="row row-cols-1 row-cols-md-2 g-2"></div>
+        </div>
+      </div>
+
+      <!-- Describe-it / image search: an LLM expands a vague/visual text description, OR
+           identifies what's in an uploaded photo, into concrete search terms (category/color/
+           material/style) before running it through normal hybrid search. Real photo -> gpt-5-nano
+           vision input; text description -> the same model reasoning about what the description
+           would look like. See the platform guide for why no image is generated or CLIP used. -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex gap-2 mb-2">
+            <input id="visualSearchInput" class="form-control" placeholder="Describe what you're looking for, e.g. &quot;something that looks like a shoe&quot; or &quot;a red waterproof hiking jacket&quot;">
+            <button id="visualSearchBtn" class="btn btn-outline-primary text-nowrap" type="button">Describe &amp; search</button>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <label for="visualSearchImageInput" class="btn btn-sm btn-outline-secondary mb-0">Or upload a photo</label>
+            <input id="visualSearchImageInput" type="file" accept="image/*" class="d-none">
+            <span id="visualSearchImageName" class="small text-body-secondary"></span>
+          </div>
+          <div id="visualSearchStatus" class="small text-body-secondary mt-1"></div>
+        </div>
       </div>
 
       <!-- Deals grid -->
@@ -214,23 +256,53 @@
     <div id="accountOrders"></div>
   </div>
 
+  <footer class="border-top bg-light mt-5 py-4">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+      <div class="small text-body-secondary">
+        &copy; 2026 WaveStore. All rights reserved.
+      </div>
+      <nav class="d-flex gap-3">
+        <a href="/account" class="small text-decoration-none">Customer Service</a>
+        <a href="/api/retail/call-me" class="small text-decoration-none">Contact Us</a>
+      </nav>
+    </div>
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- State ---
     const tenantId = "demo-tenant";
-    const visitorId = "wave-store-visitor";
+    // Persistent per-browser visitor id (not a shared constant) -- personalization is built from
+    // per-visitor view/click/purchase affinity, so every shopper needs their own stable identity
+    // across page loads/sessions for it to mean anything.
+    function getOrCreateVisitorId() {
+        let id = localStorage.getItem("wavestore-visitor-id");
+        if (!id) {
+            id = "visitor-" + (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+            localStorage.setItem("wavestore-visitor-id", id);
+        }
+        return id;
+    }
+    const visitorId = getOrCreateVisitorId();
+    let voiceRecommendSeedOverride = null;
     const state = {
       catalog: [],
       catalogById: new Map(),
+      catalogByIdLower: new Map(),
       offers: [],
       offersById: new Map(),
       activeOfferId: "",
-      activeOfferProductIds: null,
       basket: loadJson("wavestore-basket", []),
       orders: loadJson("wavestore-orders", []),
       authToken: loadJson("wavestore-auth-token", ""),
       authUser: loadJson("wavestore-auth-user", ""),
       authTenant: loadJson("wavestore-auth-tenant", "demo-tenant"),
+      categoryTree: new Map(),
+      // Category-navbar clicks pick a top-level segment ("Outdoor") or a full hierarchical path
+      // ("Outdoor > Hiking") that generally won't match any single <option> in the manual
+      // categoryFilter <select> (which lists only full leaf paths) -- this override lets nav
+      // clicks drive the actual search filter without fighting the select element's own value.
+      navCategoryOverride: null,
     };
 
     // --- Utilities ---
@@ -238,6 +310,18 @@
     const pageMode = document.body.dataset.page || "home";
     const money = v => `$${Number(v || 0).toFixed(2)}`;
     const esc = s => String(s || "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const toAmount = (value) => {
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      if (typeof value === "string") {
+        const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+      return 0;
+    };
+    const getCatalogProduct = (productId) => {
+      const key = String(productId || "");
+      return state.catalogById.get(key) || state.catalogByIdLower.get(key.toLowerCase()) || null;
+    };
 
     function loadJson(key, fallback) {
       try { return JSON.parse(localStorage.getItem(key) || ""); } catch { return fallback; }
@@ -268,11 +352,19 @@
     // --- API ---
     async function api(path, method = "GET", body = null) {
       const opts = { method, headers: { "Content-Type": "application/json", "X-Tenant-Id": state.authTenant || tenantId } };
-      if (state.authToken) opts.headers.Authorization = `Bearer ${state.authToken}`;
+      if (state.authToken) opts.headers.Authorization = "Bearer " + state.authToken;
       if (body) opts.body = JSON.stringify(body);
       const r = await fetch(path, opts);
       if (!r.ok) throw new Error(`${method} ${path} -> ${r.status}`);
       return r.json();
+    }
+
+    // --- Behavior telemetry (feeds personalization) ---
+    // Fire-and-forget: a dropped event should never block the shopper's actual action (search,
+    // view, add to basket). visitorId is the persistent per-browser id set up above, not a
+    // shared constant, so affinity actually accrues per real visitor.
+    function trackEvent(eventType, extra = {}) {
+      api("/v2/events", "POST", { eventType, visitorId, timestamp: new Date().toISOString(), ...extra }).catch(() => {});
     }
 
     // --- Basket ---
@@ -286,6 +378,7 @@
       else { state.basket.push({ productId: product.id, title: productTitle(product), price: productPrice(product), quantity: qty, image: productImage(product), category: topCategory(product) }); }
       state.basket = state.basket.filter(i => i.quantity > 0);
       persistBasket();
+      trackEvent("add_to_cart", { productId: product.id });
     }
     function setQty(productId, qty) {
       const item = state.basket.find(i => i.productId === productId);
@@ -306,6 +399,7 @@
           state.orders.unshift(resp.order);
           saveJson("wavestore-orders", state.orders);
         }
+        for (const item of state.basket) trackEvent("purchase", { productId: item.productId });
         clearBasket();
         await loadAccountOrders();
         alert("Order placed in ERP successfully.");
@@ -345,7 +439,7 @@
     // --- Filters ---
     function readFilters() {
       return {
-        category: el("categoryFilter")?.value || "",
+        category: state.navCategoryOverride !== null ? state.navCategoryOverride : (el("categoryFilter")?.value || ""),
         brand: el("brandFilter")?.value || "",
         availability: el("availabilityFilter")?.value || "",
         sort: el("sortFilter")?.value || "relevance",
@@ -365,13 +459,62 @@
       if (f.maxStock !== null && Number(p.availableQuantity || 0) > f.maxStock) return false;
       return true;
     }
+    // Dynamic offer/product matching: prefers an explicit productIds list (hand-picked promos),
+    // otherwise matches live against brand/category/tags/title/description so any product added to
+    // the catalog later automatically qualifies without needing to edit the offer.
+    function offerMatchesProduct(offer, p) {
+      const explicitIds = Array.isArray(offer.productIds) ? offer.productIds.map(String) : [];
+      if (explicitIds.length) return explicitIds.includes(String(p?.id || ""));
+      const brandNeedle = String(offer.brand || "").toLowerCase().trim();
+      const textNeedle = String(offer.query || offer.category || "").toLowerCase().trim();
+      if (!brandNeedle && !textNeedle) return false;
+      let ok = true;
+      if (brandNeedle) {
+        const brands = (p.brands || []).map(b => String(b).toLowerCase());
+        ok = ok && brands.some(b => b.includes(brandNeedle));
+      }
+      if (ok && textNeedle) {
+        const hay = [productTitle(p), p.description, ...(p.categories || []), ...(p.tags || [])].join(" ").toLowerCase();
+        ok = ok && hay.includes(textNeedle);
+      }
+      return ok;
+    }
     function sortProducts(items, sort) {
       const copy = [...items];
+      const rank = (p) => {
+        const inStock = normalizeAvailability(p) !== "OUT_OF_STOCK" ? 1 : 0;
+        const promoted = state.offers.some(o => offerMatchesProduct(o, p)) ? 1 : 0;
+        return { inStock, promoted };
+      };
       switch (sort) {
-        case "priceAsc": return copy.sort((a, b) => productPrice(a) - productPrice(b));
-        case "priceDesc": return copy.sort((a, b) => productPrice(b) - productPrice(a));
-        case "stockDesc": return copy.sort((a, b) => (b.availableQuantity || 0) - (a.availableQuantity || 0));
-        default: return copy.sort((a, b) => (b.score || 0) - (a.score || 0));
+        case "priceAsc":
+          return copy.sort((a, b) => {
+            const ra = rank(a), rb = rank(b);
+            if (rb.inStock !== ra.inStock) return rb.inStock - ra.inStock; // bury out-of-stock
+            if (rb.promoted !== ra.promoted) return rb.promoted - ra.promoted; // boost promoted
+            return productPrice(a) - productPrice(b);
+          });
+        case "priceDesc":
+          return copy.sort((a, b) => {
+            const ra = rank(a), rb = rank(b);
+            if (rb.inStock !== ra.inStock) return rb.inStock - ra.inStock;
+            if (rb.promoted !== ra.promoted) return rb.promoted - ra.promoted;
+            return productPrice(b) - productPrice(a);
+          });
+        case "stockDesc":
+          return copy.sort((a, b) => {
+            const ra = rank(a), rb = rank(b);
+            if (rb.inStock !== ra.inStock) return rb.inStock - ra.inStock;
+            if (rb.promoted !== ra.promoted) return rb.promoted - ra.promoted;
+            return (b.availableQuantity || 0) - (a.availableQuantity || 0);
+          });
+        default:
+          return copy.sort((a, b) => {
+            const ra = rank(a), rb = rank(b);
+            if (rb.inStock !== ra.inStock) return rb.inStock - ra.inStock;
+            if (rb.promoted !== ra.promoted) return rb.promoted - ra.promoted;
+            return (b.score || 0) - (a.score || 0);
+          });
       }
     }
 
@@ -393,17 +536,70 @@
       panel.innerHTML = facetList("Categories", cats) + facetList("Brands", brands);
     }
 
+    // --- Autocomplete ---
+    let autocompleteDebounce = null;
+    let autocompleteAbort = null;
+    function hideAutocomplete() {
+      const dd = el("autocompleteDropdown");
+      if (dd) { dd.classList.add("d-none"); dd.innerHTML = ""; }
+    }
+    function renderAutocomplete(data) {
+      const dd = el("autocompleteDropdown");
+      if (!dd) return;
+      const suggestions = data.suggestions || [];
+      const corrected = data.correctedQuery;
+      const rows = [];
+      if (corrected && suggestions.length) {
+        rows.push(`<div class="list-group-item small text-body-secondary">Showing results for <strong>${esc(corrected)}</strong></div>`);
+      }
+      for (const title of suggestions) {
+        rows.push(`<button type="button" class="list-group-item list-group-item-action autocomplete-item">${esc(title)}</button>`);
+      }
+      for (const term of (data.termSuggestions || []).slice(0, 4)) {
+        rows.push(`<button type="button" class="list-group-item list-group-item-action autocomplete-item text-body-secondary">${esc(term)}</button>`);
+      }
+      if (!rows.length) { hideAutocomplete(); return; }
+      dd.innerHTML = rows.join("");
+      dd.classList.remove("d-none");
+      dd.querySelectorAll(".autocomplete-item").forEach(btn => {
+        btn.addEventListener("click", () => {
+          el("query").value = btn.textContent.trim();
+          hideAutocomplete();
+          state.activeOfferId = "";
+          showSearchView();
+          runSearch();
+        });
+      });
+    }
+    async function fetchAutocomplete(query) {
+      if (!query.trim()) { hideAutocomplete(); return; }
+      if (autocompleteAbort) autocompleteAbort.abort();
+      autocompleteAbort = new AbortController();
+      try {
+        const r = await fetch(`/v2/search/autocomplete?q=${encodeURIComponent(query)}&limit=6`, {
+          headers: { "X-Tenant-Id": state.authTenant || tenantId },
+          signal: autocompleteAbort.signal,
+        });
+        if (!r.ok) return;
+        renderAutocomplete(await r.json());
+      } catch (err) {
+        if (err.name !== "AbortError") console.error(err);
+      }
+    }
+
     // --- Search & Render ---
     async function runSearch() {
       const query = el("query")?.value.trim() || "";
       const filters = readFilters();
       el("resultStatus").textContent = "Searching...";
       try {
-        const resp = await api("/v2/search", "POST", { query, pageSize: 50, filters: {} });
+        const resp = await api("/v2/search", "POST", { query, pageSize: 50, filters: {}, visitorId });
+        if (query) trackEvent("search", { query });
         let items = (resp.results || []).map(r => r.product || r).filter(Boolean);
         if (!query) items = state.catalog.slice();
-        if (state.activeOfferProductIds) {
-          items = items.filter(p => state.activeOfferProductIds.has(String(p.id || "")));
+        if (state.activeOfferId) {
+          const activeOffer = state.offersById.get(state.activeOfferId);
+          if (activeOffer) items = items.filter(p => offerMatchesProduct(activeOffer, p));
         }
         items = items.filter(p => matchesFilters(p, filters));
         items = sortProducts(items, filters.sort);
@@ -582,32 +778,89 @@
       if (!panel) return;
       const customerId = state.authUser || "guest";
       try {
-        const resp = await api(`/v2/account/orders?customerId=${encodeURIComponent(customerId)}`);
-        const orders = Array.isArray(resp?.orders) ? resp.orders : [];
-        if (!orders.length) {
-          panel.innerHTML = '<div class="alert alert-light">No ERP orders yet for this account.</div>';
+        const [ordersResp, invoicesResp] = await Promise.all([
+          api(`/v2/account/orders?customerId=${encodeURIComponent(customerId)}`),
+          api(`/v2/account/invoices?customerId=${encodeURIComponent(customerId)}`),
+        ]);
+        const orders = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
+        const invoices = Array.isArray(invoicesResp?.invoices) ? invoicesResp.invoices : [];
+        const activeOrders = orders.filter(o => !["COMPLETED", "CANCELLED", "LOST"].includes(String(o?.status || "").toUpperCase()));
+        const activeInvoices = invoices.filter(i => !["PAID", "CANCELLED", "VOID", "CLOSED"].includes(String(i?.status || "").toUpperCase()));
+        const orderById = new Map(orders.map(o => [String(o?.id || o?.orderId || ""), o]));
+        const orderValue = (order) => {
+          const explicit = toAmount(order?.total ?? order?.amount ?? 0);
+          if (explicit > 0) return explicit;
+          const items = Array.isArray(order?.items) ? order.items : (Array.isArray(order?.lineItems) ? order.lineItems : []);
+          let sum = 0;
+          for (const item of items) {
+            const qty = Math.max(0, toAmount(item?.quantity ?? item?.qty ?? item?.count ?? 0));
+            const linePrice = toAmount(item?.price ?? item?.unitPrice ?? item?.amount ?? item?.value ?? 0);
+            if (linePrice > 0) {
+              sum += qty * linePrice;
+              continue;
+            }
+            const catalogProduct = getCatalogProduct(item?.productId || item?.sku || item?.skuId || item?.id || "");
+            const fromCatalog = toAmount(catalogProduct?.price ?? catalogProduct?.priceInfo?.price ?? 0);
+            sum += qty * Math.max(0, fromCatalog);
+          }
+          return sum;
+        };
+
+        if (!activeOrders.length && !activeInvoices.length) {
+          panel.innerHTML = '<div class="alert alert-light">No active ERP orders or invoices for this account.</div>';
           return;
         }
         panel.innerHTML = `
-          <div class="card">
+          <div class="card mb-3">
             <div class="card-body">
-              <h5 class="mb-3">ERP order history</h5>
+              <h5 class="mb-3">Active orders</h5>
               <div class="list-group">
-                ${orders.slice(0, 20).map(o => `
+                ${activeOrders.length ? activeOrders.slice(0, 20).map(o => `
                   <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
                       <strong>${esc(o.id || o.orderId || "Order")}</strong>
                       <span class="badge text-bg-secondary">${esc(o.status || "PLACED")}</span>
                     </div>
                     <div class="small text-body-secondary">${esc(o.createdAt || "")}</div>
-                    <div class="small mt-1">${money(o.total || o.amount || 0)} • ${(o.items || []).length} item(s)</div>
+                    <div class="small mt-1"><strong>Order value:</strong> ${money(orderValue(o))}</div>
+                    <div class="small mt-1"><strong>Items:</strong></div>
+                    <ul class="small mb-0">
+                      ${(Array.isArray(o.items) && o.items.length ? o.items : [{ productId: "(no items)", quantity: 0 }]).map(item => `
+                        <li>${esc(item.productId || item.id || "item")} × ${Number(item.quantity || 0)}</li>
+                      `).join("")}
+                    </ul>
                   </div>
-                `).join("")}
+                `).join("") : '<div class="list-group-item text-body-secondary">No active orders.</div>'}
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h5 class="mb-3">Active invoices</h5>
+              <div class="list-group">
+                ${activeInvoices.length ? activeInvoices.slice(0, 20).map(i => `
+                  <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong>${esc(i.id || "Invoice")}</strong>
+                      <span class="badge text-bg-warning">${esc(i.status || "OPEN")}</span>
+                    </div>
+                    <div class="small text-body-secondary">Order: ${esc(i.orderId || "-")} • ${esc(i.createdAt || "")}</div>
+                    <div class="small mt-1"><strong>Invoice value:</strong> ${money(Number(i.amount || i.total || 0) || orderValue(orderById.get(String(i.orderId || ""))))} ${esc(i.currencyCode || "GBP")}</div>
+                    <div class="small mt-1"><strong>Order items:</strong></div>
+                    <ul class="small mb-0">
+                      ${(() => {
+                        const source = orderById.get(String(i.orderId || ""));
+                        const items = Array.isArray(source?.items) && source.items.length ? source.items : [{ productId: "(no linked order items)", quantity: 0 }];
+                        return items.map(item => `<li>${esc(item.productId || item.id || "item")} × ${Number(item.quantity || 0)}</li>`).join("");
+                      })()}
+                    </ul>
+                  </div>
+                `).join("") : '<div class="list-group-item text-body-secondary">No active invoices.</div>'}
               </div>
             </div>
           </div>`;
       } catch {
-        panel.innerHTML = '<div class="alert alert-warning">Could not load ERP order history.</div>';
+        panel.innerHTML = '<div class="alert alert-warning">Could not load ERP account activity.</div>';
       }
     }
 
@@ -620,43 +873,89 @@
       }
       fillSelect("categoryFilter", [...cats].sort());
       fillSelect("brandFilter", [...brands].sort());
-      renderCategoryNav([...cats].sort());
+      // Build a two-level category tree from hierarchical "Top > Mid > Leaf" strings so the
+      // navbar can show top-level categories only, with their subcategories revealed in a
+      // second bar underneath once a top-level category is selected (rather than flattening
+      // every full path into one long, repetitive top-level list).
+      const tree = new Map();
+      for (const cat of cats) {
+        const parts = cat.split(">").map(s => s.trim()).filter(Boolean);
+        const top = parts[0] || cat;
+        const rest = parts.slice(1).join(" > ");
+        if (!tree.has(top)) tree.set(top, new Map());
+        if (rest) tree.get(top).set(rest, cat);
+      }
+      state.categoryTree = tree;
+      renderCategoryNav([...tree.keys()].sort());
     }
 
-    function renderCategoryNav(categories) {
+    function renderCategoryNav(topCategories) {
       const nav = el("categoryNav");
       if (!nav) return;
       nav.innerHTML = "";
       const allLink = document.createElement("li");
       allLink.className = "nav-item";
       allLink.innerHTML = `<a class="nav-link active" href="#">All</a>`;
-      allLink.querySelector("a").addEventListener("click", e => { e.preventDefault(); searchByCategory(""); });
+      allLink.querySelector("a").addEventListener("click", e => { e.preventDefault(); selectTopCategory(""); });
       nav.appendChild(allLink);
-      for (const cat of categories) {
-        const label = cat.split(">").pop().trim() || cat;
+      for (const top of topCategories) {
         const li = document.createElement("li");
         li.className = "nav-item";
-        li.innerHTML = `<a class="nav-link text-nowrap" href="#">${esc(label)}</a>`;
-        li.querySelector("a").addEventListener("click", e => { e.preventDefault(); searchByCategory(cat); });
+        li.innerHTML = `<a class="nav-link text-nowrap" href="#">${esc(top)}</a>`;
+        li.querySelector("a").addEventListener("click", e => { e.preventDefault(); selectTopCategory(top); });
         nav.appendChild(li);
       }
     }
 
-    function searchByCategory(cat) {
+    function renderSubcategoryNav(top, activeFullPath) {
+      const bar = el("subcategoryBar");
+      const nav = el("subcategoryNav");
+      if (!bar || !nav) return;
+      const children = state.categoryTree?.get(top);
+      if (!children || !children.size) { bar.classList.add("d-none"); nav.innerHTML = ""; return; }
+      nav.innerHTML = "";
+      const allLi = document.createElement("li");
+      allLi.className = "nav-item";
+      allLi.innerHTML = `<a class="nav-link small text-nowrap${activeFullPath ? "" : " active"}" href="#">All ${esc(top)}</a>`;
+      allLi.querySelector("a").addEventListener("click", e => { e.preventDefault(); selectSubcategory(top, "", ""); });
+      nav.appendChild(allLi);
+      for (const [label, fullPath] of [...children.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        const li = document.createElement("li");
+        li.className = "nav-item";
+        const isActive = fullPath === activeFullPath;
+        li.innerHTML = `<a class="nav-link small text-nowrap${isActive ? " active" : ""}" href="#">${esc(label)}</a>`;
+        li.querySelector("a").addEventListener("click", e => { e.preventDefault(); selectSubcategory(top, fullPath, label); });
+        nav.appendChild(li);
+      }
+      bar.classList.remove("d-none");
+    }
+
+    function selectTopCategory(top) {
       if (pageMode !== "home") {
-        window.location.href = `/?category=${encodeURIComponent(cat)}`;
+        window.location.href = `/?category=${encodeURIComponent(top)}`;
         return;
       }
+      searchByCategory(top);
+      el("categoryNav").querySelectorAll(".nav-link").forEach(link => {
+        link.classList.toggle("active", (top === "" && link.textContent === "All") || link.textContent.trim() === top);
+      });
+      if (top) renderSubcategoryNav(top, "");
+      else { el("subcategoryBar")?.classList.add("d-none"); }
+    }
+
+    function selectSubcategory(top, fullPath, label) {
+      searchByCategory(fullPath || top);
+      renderSubcategoryNav(top, fullPath);
+    }
+
+    function searchByCategory(cat) {
+      state.navCategoryOverride = cat || null;
       const catFilter = el("categoryFilter");
-      if (catFilter) catFilter.value = cat;
+      if (catFilter) catFilter.value = "";
       el("query").value = "";
       state.activeOfferId = "";
-      state.activeOfferProductIds = null;
       showSearchView();
       runSearch();
-      el("categoryNav").querySelectorAll(".nav-link").forEach(link => {
-        link.classList.toggle("active", (cat === "" && link.textContent === "All") || link.textContent.trim() === (cat.split(">").pop().trim() || cat));
-      });
     }
 
     function showSearchView() {
@@ -683,6 +982,7 @@
       const data = await api("/v2/catalog/products?offset=0&limit=1000");
       state.catalog = data.products || [];
       state.catalogById = new Map(state.catalog.map(p => [p.id, p]));
+      state.catalogByIdLower = new Map(state.catalog.map(p => [String(p?.id || "").toLowerCase(), p]));
       populateFilters();
       await runSearch();
     }
@@ -730,13 +1030,96 @@
       const offer = state.offersById.get(String(offerId || ""));
       if (!offer) return;
       state.activeOfferId = String(offer.id || "");
-      const productIds = Array.isArray(offer.productIds) ? offer.productIds.map(x => String(x)) : [];
-      state.activeOfferProductIds = productIds.length ? new Set(productIds) : null;
-      if (el("query")) el("query").value = offer.query || "";
+      // Leave the query box empty so runSearch() starts from the full catalog and lets
+      // offerMatchesProduct() do the (live, always up to date) filtering below.
+      if (el("query")) el("query").value = "";
+      state.navCategoryOverride = null;
       if (offer.category && el("categoryFilter")) el("categoryFilter").value = offer.category;
       if (offer.brand && el("brandFilter")) el("brandFilter").value = offer.brand;
       showSearchView();
       runSearch();
+    }
+
+    // --- Offer search (queries the in-memory promotions index in wavesearch-api) ---
+    async function searchOffers() {
+      const box = el("offerSearchResults");
+      const query = el("offerSearchInput")?.value.trim() || "";
+      if (!box) return;
+      box.innerHTML = '<div class="col text-body-secondary small">Searching offers…</div>';
+      try {
+        const resp = await api("/v2/offers/search", "POST", { query, pageSize: 20 });
+        const results = Array.isArray(resp?.offers) ? resp.offers : [];
+        if (!results.length) {
+          box.innerHTML = '<div class="col text-body-secondary small">No matching offers found.</div>';
+          return;
+        }
+        box.innerHTML = "";
+        for (const offer of results) {
+          const col = document.createElement("div");
+          col.className = "col";
+          const title = offer.title || offer.id || "Offer";
+          const subtitle = offer.subtitle || "";
+          const cta = offer.cta || "Shop offer";
+          col.innerHTML = `
+            <div class="border rounded p-2 h-100 d-flex flex-column">
+              <div class="fw-semibold small">${esc(title)}</div>
+              <div class="text-body-secondary small flex-grow-1">${esc(subtitle)}</div>
+              <button class="btn btn-sm btn-outline-primary mt-2 offer-search-cta" data-offer-id="${esc(String(offer.id || ""))}">${esc(cta)}</button>
+            </div>`;
+          box.appendChild(col);
+        }
+        box.querySelectorAll(".offer-search-cta").forEach(btn => {
+          btn.addEventListener("click", () => applyOffer(btn.dataset.offerId || ""));
+        });
+      } catch {
+        box.innerHTML = '<div class="col text-danger small">Offer search failed.</div>';
+      }
+    }
+
+    // --- Describe-it / image visual search (LLM expands vague/visual text descriptions, or
+    // identifies what's in an uploaded photo, then normal hybrid search runs against the result) ---
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    function renderVisualSearchStatus(visual) {
+      const status = el("visualSearchStatus");
+      if (!status) return;
+      if (visual.applied) {
+        const sourceLabel = visual.source === "image" ? "from your photo" : "from your description";
+        status.textContent = `Interpreted ${sourceLabel}: "${visual.expandedQuery}" (detected: ${visual.detectedCategory || "unknown category"})`;
+      } else {
+        status.textContent = visual.reason || visual.error || "Could not interpret input; searched as typed.";
+      }
+    }
+    async function visualSearch() {
+      const status = el("visualSearchStatus");
+      const description = el("visualSearchInput")?.value.trim() || "";
+      const imageFile = el("visualSearchImageInput")?.files?.[0] || null;
+      if (!description && !imageFile) return;
+      if (status) status.textContent = imageFile ? "Analyzing photo…" : "Interpreting description…";
+      try {
+        const body = { pageSize: 50, visitorId };
+        if (description) body.description = description;
+        if (imageFile) {
+          body.imageBase64 = await fileToBase64(imageFile);
+          body.imageMimeType = imageFile.type || "image/jpeg";
+        }
+        const resp = await api("/v2/search/visual", "POST", body);
+        renderVisualSearchStatus(resp.visualSearch || {});
+        el("query").value = description || (resp.visualSearch || {}).expandedQuery || "";
+        state.activeOfferId = "";
+        showSearchView();
+        let items = (resp.results || []).map(r => r.product || r).filter(Boolean);
+        renderResults(items, description || "photo search");
+      } catch (err) {
+        if (status) status.textContent = "Visual search failed.";
+        console.error(err);
+      }
     }
 
     function renderCarousel() {
@@ -813,6 +1196,7 @@
       browsingHistory.unshift(entry);
       if (browsingHistory.length > 20) browsingHistory.length = 20;
       saveJson("wavestore-history", browsingHistory);
+      trackEvent("view", { productId: product.id });
     }
 
     function renderHistoryRail() {
@@ -839,7 +1223,8 @@
     async function loadRecommendations() {
       const rail = el("recsRail");
       if (!rail) return;
-      const seed = browsingHistory[0]?.id || state.catalog[0]?.id;
+      const seed = voiceRecommendSeedOverride || browsingHistory[0]?.id || state.catalog[0]?.id;
+      voiceRecommendSeedOverride = null;
       if (!seed) { rail.innerHTML = '<div class="col"><p class="text-body-secondary small">Browse some products to get personalised recommendations.</p></div>'; return; }
       try {
         const resp = await api("/v2/recommend", "POST", { productId: seed, visitorId, pageSize: 6 });
@@ -871,16 +1256,35 @@
         const data = await api("/v2/catalog/products?offset=0&limit=1000");
         state.catalog = data.products || [];
         state.catalogById = new Map(state.catalog.map(p => [p.id, p]));
+        state.catalogByIdLower = new Map(state.catalog.map(p => [String(p?.id || "").toLowerCase(), p]));
         const cats = [...new Set(state.catalog.flatMap(p => p.categories || []))].sort();
         renderCategoryNav(cats);
       } catch { el("categoryNav").innerHTML = ""; }
     }
 
     if (pageMode === "home") {
-      el("searchBtn").addEventListener("click", () => { state.activeOfferId = ""; state.activeOfferProductIds = null; showSearchView(); runSearch(); });
-      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { state.activeOfferId = ""; state.activeOfferProductIds = null; showSearchView(); runSearch(); } });
+      el("searchBtn").addEventListener("click", () => { hideAutocomplete(); state.activeOfferId = ""; showSearchView(); runSearch(); });
+      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { hideAutocomplete(); state.activeOfferId = ""; showSearchView(); runSearch(); } else if (e.key === "Escape") { hideAutocomplete(); } });
+      el("query").addEventListener("input", e => {
+        clearTimeout(autocompleteDebounce);
+        const value = e.target.value;
+        autocompleteDebounce = setTimeout(() => fetchAutocomplete(value), 180);
+      });
+      document.addEventListener("click", e => {
+        if (!e.target.closest("#autocompleteDropdown") && e.target.id !== "query") hideAutocomplete();
+      });
+      el("offerSearchBtn")?.addEventListener("click", () => searchOffers());
+      el("offerSearchInput")?.addEventListener("keydown", e => { if (e.key === "Enter") searchOffers(); });
+      el("visualSearchBtn")?.addEventListener("click", () => visualSearch());
+      el("visualSearchInput")?.addEventListener("keydown", e => { if (e.key === "Enter") visualSearch(); });
+      el("visualSearchImageInput")?.addEventListener("change", e => {
+        const file = e.target.files?.[0];
+        const label = el("visualSearchImageName");
+        if (label) label.textContent = file ? file.name : "";
+        if (file) visualSearch();
+      });
       [el("categoryFilter"), el("brandFilter"), el("availabilityFilter"), el("sortFilter"), el("minPrice"), el("maxPrice"), el("minStock"), el("maxStock")]
-        .forEach(n => n?.addEventListener("change", () => { state.activeOfferId = ""; state.activeOfferProductIds = null; runSearch(); }));
+        .forEach(n => n?.addEventListener("change", () => { state.activeOfferId = ""; state.navCategoryOverride = null; runSearch(); }));
       renderHistoryRail();
       loadCatalog().then(async () => {
         await loadOffers();
@@ -888,7 +1292,17 @@
         const offerFromUrl = new URLSearchParams(window.location.search).get("offer");
         if (offerFromUrl) applyOffer(offerFromUrl);
         renderDealsGrid();
+        const voiceQuery = new URLSearchParams(window.location.search).get("voiceQuery");
+        const voiceRecommendFor = new URLSearchParams(window.location.search).get("voiceRecommendFor");
+        if (voiceQuery) {
+          el("query").value = voiceQuery;
+          state.activeOfferId = "";
+          showSearchView();
+          runSearch();
+        }
+        if (voiceRecommendFor) voiceRecommendSeedOverride = voiceRecommendFor;
         loadRecommendations();
+        if (voiceRecommendFor) el("recsRail")?.scrollIntoView({ behavior: "smooth", block: "center" });
       }).catch(err => console.error(err));
     } else {
       loadCategoryNav();
@@ -911,6 +1325,276 @@
         loadAccountOrders();
       }
     }
+
+    // --- Voice assistant (mic top-right; orchestrates search/basket/checkout/account/offers by voice) ---
+    (function initVoice() {
+      const TARGET_RATE = 24000;
+      const micBtn = el("voiceMicBtn");
+      const panel = el("voicePanel");
+      const closeBtn = el("voicePanelClose");
+      const statusDot = el("voiceStatusDot");
+      const voiceLogEl = el("voiceLog");
+      if (!micBtn) return;
+
+      let ws = null, audioContext = null, sourceNode = null, processorNode = null, silentGainNode = null, micStream = null;
+      let nextPlaybackTime = 0, active = false, greetingPending = false;
+      let activeAudioSources = [];
+
+      function logLine(text) {
+        if (!voiceLogEl) return;
+        voiceLogEl.textContent += "\n" + text;
+        voiceLogEl.scrollTop = voiceLogEl.scrollHeight;
+      }
+      function setDot(color) { if (statusDot) statusDot.style.background = color; }
+      function bytesToBase64(bytes) {
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return btoa(binary);
+      }
+      function base64ToBytes(value) {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      }
+      function downsampleToPcm16(samples, sourceRate) {
+        const ratio = sourceRate / TARGET_RATE;
+        const length = Math.floor(samples.length / ratio);
+        const pcm = new Int16Array(length);
+        for (let i = 0; i < length; i++) {
+          const start = Math.floor(i * ratio);
+          const end = Math.min(Math.floor((i + 1) * ratio), samples.length);
+          let sum = 0;
+          for (let j = start; j < end; j++) sum += samples[j];
+          const sample = Math.max(-1, Math.min(1, sum / Math.max(1, end - start)));
+          pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        }
+        return new Uint8Array(pcm.buffer);
+      }
+      let loggedFirstAudioChunk = false;
+      function playPcm16(base64Pcm) {
+        try {
+          if (!audioContext) { logLine("No audio output: audioContext missing."); return; }
+          if (audioContext.state !== "running") {
+            // Try to recover once instead of silently dropping audio.
+            audioContext.resume().catch(() => {});
+          }
+          const bytes = base64ToBytes(base64Pcm);
+          const pcm = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+          if (!loggedFirstAudioChunk) {
+            loggedFirstAudioChunk = true;
+            logLine(`Audio: contextState=${audioContext.state} contextRate=${audioContext.sampleRate} samples=${pcm.length}`);
+          }
+          if (pcm.length === 0) { logLine("No audio output: received an empty audio chunk."); return; }
+          const buffer = audioContext.createBuffer(1, pcm.length, TARGET_RATE);
+          const channel = buffer.getChannelData(0);
+          for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 0x8000;
+          const node = audioContext.createBufferSource();
+          node.buffer = buffer;
+          node.connect(audioContext.destination);
+          // If playback has fallen behind (first chunk of a new response, or a network jitter gap),
+          // resync with a bit of headroom instead of the previous tight 30ms -- that tight buffer was
+          // a common cause of audible choppiness whenever a chunk arrived even slightly late.
+          const JITTER_BUFFER_SECONDS = 0.12;
+          if (nextPlaybackTime < audioContext.currentTime) {
+            nextPlaybackTime = audioContext.currentTime + JITTER_BUFFER_SECONDS;
+          }
+          node.start(nextPlaybackTime);
+          nextPlaybackTime += buffer.duration;
+          activeAudioSources.push(node);
+          node.onended = () => { activeAudioSources = activeAudioSources.filter(n => n !== node); };
+        } catch (err) {
+          logLine("Audio playback error: " + (err && err.message ? err.message : String(err)));
+        }
+      }
+      function stopAllPlayback() {
+        // Barge-in: the shopper started talking, so immediately stop anything still queued/playing.
+        for (const node of activeAudioSources) {
+          try { node.stop(); } catch { /* already stopped */ }
+        }
+        activeAudioSources = [];
+        if (audioContext) nextPlaybackTime = audioContext.currentTime;
+      }
+
+      function sessionContext() {
+        return {
+          tenant: state.authTenant || tenantId,
+          customerId: state.authUser || "guest",
+          basket: state.basket || [],
+          browsingHistory: (typeof browsingHistory !== "undefined" ? browsingHistory : []).slice(0, 10),
+        };
+      }
+
+      function navigateForVoice(path, extraParams) {
+        const url = new URL(path, window.location.origin);
+        for (const [k, v] of Object.entries(extraParams || {})) {
+          if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
+        }
+        url.searchParams.set("voiceResume", "1");
+        window.location.href = url.pathname + url.search;
+      }
+
+      function handleUiAction(action) {
+        switch (action.action) {
+          case "search": {
+            const q = action.query || "";
+            const filters = action.filters || {};
+            if (pageMode === "home") {
+              if (el("query")) el("query").value = q;
+              state.navCategoryOverride = null;
+              if (filters.category && el("categoryFilter")) el("categoryFilter").value = filters.category;
+              if (filters.brand && el("brandFilter")) el("brandFilter").value = filters.brand;
+              if (filters.availability && el("availabilityFilter")) el("availabilityFilter").value = filters.availability;
+              state.activeOfferId = "";
+              showSearchView();
+              runSearch();
+            } else {
+              navigateForVoice("/", { voiceQuery: q });
+            }
+            break;
+          }
+          case "show_recommendations": {
+            if (pageMode === "home") {
+              if (action.productId) voiceRecommendSeedOverride = action.productId;
+              loadRecommendations();
+              el("recsRail")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            } else {
+              navigateForVoice("/", { voiceRecommendFor: action.productId || "" });
+            }
+            break;
+          }
+          case "show_offers": {
+            if (pageMode === "home") {
+              el("dealsGrid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            } else {
+              navigateForVoice("/");
+            }
+            break;
+          }
+          case "add_to_basket": {
+            let product = action.productId ? getCatalogProduct(action.productId) : null;
+            if (!product && action.query && Array.isArray(state.catalog)) {
+              const needle = String(action.query).toLowerCase();
+              product = state.catalog.find(p => productTitle(p).toLowerCase().includes(needle));
+            }
+            if (product) {
+              addToBasket(product, Math.max(1, Number(action.quantity || 1)));
+              logLine(`Added to basket: ${productTitle(product)}`);
+            } else {
+              logLine("Could not find that product to add to the basket.");
+            }
+            break;
+          }
+          case "checkout_complete": {
+            state.basket = [];
+            persistBasket();
+            logLine("Order placed. Basket cleared.");
+            if (pageMode !== "account") navigateForVoice("/account");
+            break;
+          }
+          case "navigate": {
+            const view = String(action.view || "home").toLowerCase();
+            const target = view === "basket" ? "/basket" : view === "account" ? "/account" : "/";
+            if (window.location.pathname !== target) navigateForVoice(target);
+            break;
+          }
+        }
+      }
+
+      async function startVoice() {
+        const config = await api("/v2/voice/config");
+        if (!config.enabled) {
+          logLine("Voice is not configured on this server yet.");
+          return;
+        }
+        loggedFirstAudioChunk = false;
+        panel.classList.remove("d-none");
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: TARGET_RATE });
+        await audioContext.resume();
+        logLine(`Audio context ready: state=${audioContext.state}, rate=${audioContext.sampleRate}`);
+        // Autoplay policy: a fresh page load (e.g. after a voice-triggered navigation) may not carry
+        // a "user gesture" forward, so resume() above can silently stay suspended. Any click/keydown
+        // on the new page counts as a gesture and lets us retry immediately.
+        if (audioContext.state !== "running") {
+          const resumeOnGesture = () => { audioContext.resume().catch(() => {}); };
+          document.addEventListener("click", resumeOnGesture, { once: true });
+          document.addEventListener("keydown", resumeOnGesture, { once: true });
+        }
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        ws = new WebSocket(location.origin.replace(/^http/, "ws") + config.websocket);
+        ws.onopen = () => {
+          setDot("#ffc107");
+          greetingPending = sessionStorage.getItem("wavestore-voice-greeted") !== "1";
+          ws.send(JSON.stringify({ type: "session_init", context: sessionContext() }));
+          logLine("Connected. Say what you'd like to do.");
+        };
+        ws.onclose = () => { setDot("#999"); logLine("Voice session ended."); };
+        ws.onerror = () => logLine("Voice connection error.");
+        ws.onmessage = event => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "barge_in") { stopAllPlayback(); setDot("#ffc107"); return; }
+            if (message.type === "audio") { setDot("#28a745"); playPcm16(message.audio); }
+            if (message.type === "transcript_delta") logLine("Assistant: " + message.text);
+            if (message.type === "tool_call") logLine("Using: " + message.name);
+            if (message.type === "ui_action") handleUiAction(message);
+            if (message.type === "event" && message.event === "voice.selected" && greetingPending) {
+              greetingPending = false;
+              sessionStorage.setItem("wavestore-voice-greeted", "1");
+              const shopperName = state.authUser || "there";
+              ws.send(JSON.stringify({ type: "greeting", text: `Hi ${shopperName}, what would you like to do?` }));
+            }
+            if (message.type === "error") logLine("Error: " + JSON.stringify(message.error));
+          } catch (err) {
+            logLine("Message handling error: " + (err && err.message ? err.message : String(err)));
+          }
+        };
+        sourceNode = audioContext.createMediaStreamSource(micStream);
+        processorNode = audioContext.createScriptProcessor(1024, 1, 1);
+        processorNode.onaudioprocess = event => {
+          if (!ws || ws.readyState !== WebSocket.OPEN) return;
+          const pcm = downsampleToPcm16(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+          ws.send(JSON.stringify({ type: "input_audio", audio: bytesToBase64(pcm) }));
+        };
+        silentGainNode = audioContext.createGain();
+        silentGainNode.gain.value = 0;
+        sourceNode.connect(processorNode);
+        processorNode.connect(silentGainNode);
+        silentGainNode.connect(audioContext.destination);
+        active = true;
+        micBtn.classList.add("btn-danger");
+        micBtn.classList.remove("btn-outline-light");
+      }
+
+      function stopVoice() {
+        if (processorNode) processorNode.disconnect();
+        if (silentGainNode) silentGainNode.disconnect();
+        if (sourceNode) sourceNode.disconnect();
+        if (micStream) micStream.getTracks().forEach(track => track.stop());
+        if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
+        if (audioContext) audioContext.close();
+        activeAudioSources = [];
+        nextPlaybackTime = 0;
+        active = false;
+        setDot("#999");
+        micBtn.classList.remove("btn-danger");
+        micBtn.classList.add("btn-outline-light");
+      }
+
+      micBtn.addEventListener("click", () => {
+        if (active) { stopVoice(); return; }
+        startVoice().catch(err => logLine("Could not start voice: " + err.message));
+      });
+      closeBtn?.addEventListener("click", () => { panel.classList.add("d-none"); if (active) stopVoice(); });
+
+      // Resume an in-progress voice conversation automatically after a voice-triggered page
+      // navigation (this is a multi-page app, so any navigate/search/checkout ui_action ends the
+      // current websocket by unloading the page). Without this the assistant would silently stop
+      // responding every time it moved the shopper to a new view.
+      if (new URLSearchParams(window.location.search).get("voiceResume") === "1") {
+        startVoice().catch(err => logLine("Could not resume voice: " + err.message));
+      }
+    })();
   </script>
 </body>
 </html>

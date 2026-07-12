@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wave STS</title>
+  <style>
+    :root { --bg:#f5f1ff; --panel:#fff; --line:#d9cfef; --soft:#f8f4ff; --text:#1b1230; --muted:#6a5f85; --accent:#593196; --accent-2:#e06c00; --nav:#2d0f5e; --danger:#a91f40; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI", Aptos, Calibri, sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width:1220px; margin:0 auto; padding:20px; }
+    .hero { background:linear-gradient(135deg,var(--nav) 0%,var(--accent) 55%,var(--accent-2) 100%); color:#fff; border-radius:14px; padding:16px; margin-bottom:12px; }
+    .hero .muted { color:rgba(255,255,255,.88); }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 6px 24px rgba(45,15,94,.08); }
+    .row { display:grid; gap:8px; grid-template-columns:repeat(12,minmax(0,1fr)); }
+    .col-3 { grid-column:span 3; } .col-4 { grid-column:span 4; } .col-6 { grid-column:span 6; } .col-8 { grid-column:span 8; } .col-12 { grid-column:span 12; }
+    label { display:block; font-size:12px; color:var(--muted); margin:0 0 4px; }
+    input, select { width:100%; border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--soft); color:var(--text); }
+    button { border:0; border-radius:10px; padding:10px 12px; background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
+    button.secondary { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:12px; }
+    table { width:100%; min-width:760px; border-collapse:collapse; background:#fff; }
+    th, td { padding:10px; border-bottom:1px solid var(--line); text-align:left; font-size:14px; vertical-align:top; }
+    th { background:var(--soft); color:var(--muted); font-weight:700; }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0 12px; }
+    .status { min-height:20px; color:var(--muted); margin-top:8px; }
+    .pager { display:flex; gap:8px; justify-content:flex-end; align-items:center; margin-top:10px; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(22,14,44,.45); display:none; align-items:center; justify-content:center; padding:20px; z-index:1000; }
+    .modal-backdrop.open { display:flex; }
+    .modal { width:min(860px,100%); background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .check-grid { display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--soft); }
+    .check-grid label { display:flex; gap:6px; align-items:center; margin:0; font-size:13px; color:var(--text); }
+    pre { background:#1a122b; color:#d9cfef; border:1px solid #2d1e4d; border-radius:10px; padding:10px; max-height:240px; overflow:auto; margin:0; }
+    .error { color:var(--danger); font-size:13px; min-height:18px; margin-top:8px; }
+    @media (max-width:980px) { .col-3,.col-4,.col-6,.col-8 { grid-column:span 12; } table { min-width:620px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h2 style="margin:0 0 6px;">Wave STS - User/Password + Token Admin</h2>
+    <p class="muted" style="margin:0;">Paged users list + modal user editor, with typed token issue/validation forms.</p>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div class="col-3"><label>Tenant</label><input id="tenant" value="demo-tenant"></div>
+      <div class="col-3"><label>Username</label><input id="username" value="sts.admin"></div>
+      <div class="col-3"><label>Password</label><input id="password" type="password" value="demo123!"></div>
+      <div class="col-3"><label>Audience</label><select id="audience"></select></div>
+    </div>
+    <div class="toolbar"><button id="loginBtn">Sign in + issue token</button><span id="authState" class="status">Signed out</span></div>
+    <div class="row"><div class="col-12"><label>Scopes</label><div id="loginScopes" class="check-grid"></div></div></div>
+    <div class="row" style="margin-top:8px;"><div class="col-12"><label>Admin token (wave-sts audience)</label><input id="adminToken" placeholder="Token auto-filled on successful wave-sts login"></div></div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0;">Users</h3>
+    <div class="toolbar"><button id="refreshUsersBtn" class="secondary">Refresh</button><button id="newUserBtn">New user</button></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Username</th><th>Audiences</th><th>Scopes</th><th>Admin</th><th>Disabled</th><th>Actions</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+    <div class="pager"><button id="prevBtn" class="secondary">Prev</button><span id="pageInfo">Page 1 / 1</span><button id="nextBtn" class="secondary">Next</button></div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0;">Token validation</h3>
+    <div class="row">
+      <div class="col-6"><label>Audience</label><select id="validateAudience"></select></div>
+      <div class="col-6"><label>Token</label><input id="validateToken" placeholder="Paste token to validate"></div>
+    </div>
+    <div class="toolbar"><button id="validateBtn" class="secondary">Validate</button></div>
+    <pre id="out"></pre>
+  </div>
+</div>
+
+<div id="modalBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <h3 style="margin:0 0 10px;">User editor</h3>
+    <div class="row">
+      <div class="col-6"><label>Username *</label><input id="m_username"></div>
+      <div class="col-6"><label>Password *</label><input id="m_password" type="password"></div>
+      <div class="col-6"><label><input id="m_isAdmin" type="checkbox"> Is admin</label></div>
+      <div class="col-6"><label><input id="m_disabled" type="checkbox"> Disabled</label></div>
+      <div class="col-6"><label>Allowed audiences *</label><div id="m_audiences" class="check-grid"></div></div>
+      <div class="col-6"><label>Allowed scopes *</label><div id="m_scopes" class="check-grid"></div></div>
+    </div>
+    <div id="modalError" class="error"></div>
+    <div class="toolbar" style="justify-content:flex-end; margin-top:12px;"><button id="cancelBtn" class="secondary">Cancel</button><button id="saveBtn">Save</button></div>
+  </div>
+</div>
+
+<script>
+const audienceOptions = ["wave-sts","wavesearch-api","wavestore-erp-api","wavestore-frontend","wavestore-erp-frontend","wavesearch-frontend"];
+const scopesByAudience = {
+  "wave-sts":["sts.issue","sts.validate","sts.admin"],
+  "wavesearch-api":["search.query","search.admin","search.ingest","events.write"],
+  "wavestore-erp-api":["erp.read","erp.write","erp.order","erp.export"],
+  "wavestore-frontend":["search.query","events.write","erp.read","erp.order"],
+  "wavestore-erp-frontend":["erp.read","erp.write","erp.order"],
+  "wavesearch-frontend":["search.query","search.admin","search.ingest","events.write","erp.export"],
+};
+const allScopes = [...new Set(Object.values(scopesByAudience).flat())];
+const ui = { users: [], page: 0, pageSize: 10 };
+const out = document.getElementById("out");
+const statusEl = document.getElementById("status");
+
+function esc(v){ return String(v ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch])); }
+function setStatus(msg){ statusEl.textContent = msg || ""; }
+function tokenHeaders(useAdmin=false){
+  const headers = { "Content-Type":"application/json", "X-Tenant-Id": (document.getElementById("tenant").value || "demo-tenant").trim() || "demo-tenant" };
+  if (useAdmin && document.getElementById("adminToken").value.trim()) headers.Authorization = "Bearer " + document.getElementById("adminToken").value.trim();
+  return headers;
+}
+function checkedValues(containerId){ return [...document.querySelectorAll("#" + containerId + " input[type=checkbox]:checked")].map(x => x.value); }
+function renderChecks(containerId, values, selected){
+  const sel = new Set(selected || []);
+  document.getElementById(containerId).innerHTML = values.map(v => `<label><input type="checkbox" value="${esc(v)}"${sel.has(v) ? " checked" : ""}> ${esc(v)}</label>`).join("");
+}
+function renderAudienceSelects(){
+  const options = audienceOptions.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  document.getElementById("audience").innerHTML = options;
+  document.getElementById("validateAudience").innerHTML = options;
+  document.getElementById("audience").value = "wave-sts";
+  document.getElementById("validateAudience").value = "wave-sts";
+  renderLoginScopes();
+}
+function renderLoginScopes(){ const aud = document.getElementById("audience").value; renderChecks("loginScopes", scopesByAudience[aud] || [], scopesByAudience[aud] || []); }
+async function call(path, method="GET", body=null, useAdmin=false){
+  const resp = await fetch(path, { method, headers: tokenHeaders(useAdmin), body: body ? JSON.stringify(body) : null });
+  const txt = await resp.text();
+  let data = {};
+  try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+  out.textContent = JSON.stringify(data, null, 2);
+  if (!resp.ok) throw new Error(data.detail || data.error || txt || ("HTTP " + resp.status));
+  return data;
+}
+async function signIn(){
+  const data = await call("/sts/login", "POST", {
+    tenant: (document.getElementById("tenant").value || "demo-tenant").trim() || "demo-tenant",
+    username: (document.getElementById("username").value || "").trim(),
+    password: document.getElementById("password").value || "",
+    audience: document.getElementById("audience").value,
+    scopes: checkedValues("loginScopes")
+  }, false);
+  document.getElementById("authState").textContent = "Signed in as " + (data.subject || "user");
+  if (document.getElementById("audience").value === "wave-sts" && data.access_token) document.getElementById("adminToken").value = data.access_token;
+}
+function renderUsersTable(){
+  const start = ui.page * ui.pageSize;
+  const rows = ui.users.slice(start, start + ui.pageSize);
+  const tbody = document.getElementById("usersBody");
+  tbody.innerHTML = rows.map((u, idx) => `<tr>
+    <td>${esc(u.username)}</td>
+    <td>${(u.allowedAudiences || []).map(a => `<span>${esc(a)}</span>`).join(", ")}</td>
+    <td>${(u.allowedScopes || []).map(s => `<span>${esc(s)}</span>`).join(", ")}</td>
+    <td>${u.isAdmin ? "Yes" : "No"}</td>
+    <td>${u.disabled ? "Yes" : "No"}</td>
+    <td><button class="secondary" data-edit="${start + idx}">Edit</button></td>
+  </tr>`).join("");
+  tbody.querySelectorAll("[data-edit]").forEach(btn => btn.addEventListener("click", () => openUserModal(ui.users[Number(btn.dataset.edit)])));
+  const pages = Math.max(1, Math.ceil(ui.users.length / ui.pageSize));
+  document.getElementById("pageInfo").textContent = "Page " + (ui.page + 1) + " / " + pages;
+  document.getElementById("prevBtn").disabled = ui.page <= 0;
+  document.getElementById("nextBtn").disabled = ui.page >= pages - 1;
+}
+async function loadUsers(reset=true){
+  if (reset) ui.page = 0;
+  setStatus("Loading users...");
+  const data = await call("/sts/users", "GET", null, true);
+  ui.users = Array.isArray(data.users) ? data.users : [];
+  renderUsersTable();
+  setStatus("Loaded " + ui.users.length + " users.");
+}
+function openUserModal(user){
+  document.getElementById("m_username").value = user?.username || "";
+  document.getElementById("m_password").value = "demo123!";
+  document.getElementById("m_isAdmin").checked = !!user?.isAdmin;
+  document.getElementById("m_disabled").checked = !!user?.disabled;
+  renderChecks("m_audiences", audienceOptions, user?.allowedAudiences || []);
+  renderChecks("m_scopes", allScopes, user?.allowedScopes || []);
+  document.getElementById("modalError").textContent = "";
+  document.getElementById("modalBackdrop").classList.add("open");
+}
+function closeUserModal(){ document.getElementById("modalBackdrop").classList.remove("open"); }
+async function saveUser(){
+  const username = (document.getElementById("m_username").value || "").trim();
+  const password = document.getElementById("m_password").value || "";
+  const allowedAudiences = checkedValues("m_audiences");
+  const allowedScopes = checkedValues("m_scopes");
+  const errs = [];
+  if (!username) errs.push("Username is required");
+  if (!password || password.length < 6) errs.push("Password must be at least 6 characters");
+  if (!allowedAudiences.length) errs.push("Select at least one audience");
+  if (!allowedScopes.length) errs.push("Select at least one scope");
+  if (errs.length){ document.getElementById("modalError").textContent = errs.join(" | "); return; }
+  await call("/sts/users", "POST", {
+    username, password, allowedAudiences, allowedScopes,
+    isAdmin: document.getElementById("m_isAdmin").checked,
+    disabled: document.getElementById("m_disabled").checked
+  }, true);
+  closeUserModal();
+  await loadUsers(false);
+}
+async function validateToken(){
+  const token = (document.getElementById("validateToken").value || "").trim();
+  const audience = document.getElementById("validateAudience").value;
+  if (!token){ setStatus("Token is required for validation."); return; }
+  await call("/sts/validate", "POST", { token, audience }, true);
+}
+document.getElementById("audience").addEventListener("change", renderLoginScopes);
+document.getElementById("loginBtn").addEventListener("click", () => signIn().then(() => loadUsers(true)).catch(e => setStatus(e.message)));
+document.getElementById("refreshUsersBtn").addEventListener("click", () => loadUsers(false).catch(e => setStatus(e.message)));
+document.getElementById("newUserBtn").addEventListener("click", () => openUserModal(null));
+document.getElementById("validateBtn").addEventListener("click", () => validateToken().catch(e => setStatus(e.message)));
+document.getElementById("cancelBtn").addEventListener("click", closeUserModal);
+document.getElementById("saveBtn").addEventListener("click", () => saveUser().catch(e => { document.getElementById("modalError").textContent = e.message; }));
+document.getElementById("prevBtn").addEventListener("click", () => { if (ui.page > 0){ ui.page -= 1; renderUsersTable(); }});
+document.getElementById("nextBtn").addEventListener("click", () => { const pages = Math.max(1, Math.ceil(ui.users.length / ui.pageSize)); if (ui.page < pages - 1){ ui.page += 1; renderUsersTable(); }});
+renderAudienceSelects();
+</script>
+</body>
+</html>

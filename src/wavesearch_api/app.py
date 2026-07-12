@@ -1,27 +1,61 @@
 from __future__ import annotations
 
+import asyncio
+import difflib
+import hashlib
 import json
+import math
 import os
+import re
 import tempfile
+import time
+from collections import deque
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from uuid import uuid4
+
+import numpy as np
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
+from retail_v2.azure_blob_store import azure_blob_store_from_env
 from retail_v2.blob_store import LocalBlobStore
+from retail_v2.ml_ranker import MLRankerRegistry
 from retail_v2.models import TenantContext
+from retail_v2.runtime import RuntimeBuilder, load_catalog_file, tokenize
 from retail_v2.services import RetailV2Service
 from wave_shared.auth import context_from_auth, require_scope
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Blob paths for persisted state -- survives pod restarts/redeploys when backed by real Azure
+# Blob Storage (see retail_v2.azure_blob_store), unlike the rest of this service's state which
+# is process-local in-memory only. Catalog runtime state is process-global (one shared catalog,
+# matching how the lexical/vector runtime already works), while rules/redirects/promotions stay
+# tenant-keyed dicts within a single blob each (small expected scale for a demo platform).
+CATALOG_PRODUCTS_BLOB = "cache/catalog-products.json"
+ENRICHMENT_CACHE_BLOB = "cache/enrichment-cache.json"
+VECTOR_CACHE_BLOB = "cache/vector-cache.json"
+RULES_BLOB = "cache/rules.json"
+REDIRECTS_BLOB = "cache/redirects.json"
+PROMOTIONS_BLOB = "cache/promotions.json"
+VISITOR_SIGNALS_BLOB = "cache/visitor-signals.json"
+PRODUCT_PERFORMANCE_BLOB = "cache/product-performance.json"
+RANKING_OBJECTIVE_BLOB = "cache/ranking-objective.json"
+ML_RANKER_BLOB = "cache/ml-ranker.json"
+
 
 def create_service() -> RetailV2Service:
     data_root = Path(os.environ.get("WAVESEARCH_BLOB_ROOT") or Path(tempfile.gettempdir()) / "wavesearch-api-blobs")
     catalog_path = Path(os.environ.get("WAVESEARCH_CATALOG") or ROOT / "V2" / "sample-catalog.json")
-    store = LocalBlobStore(data_root)
+    # Prefer real Azure Blob Storage (survives every redeploy/rollout/pod reschedule) when
+    # configured; fall back to the filesystem-backed LocalBlobStore for local dev/test, where
+    # losing state on restart is an acceptable tradeoff for zero external dependencies.
+    store = azure_blob_store_from_env() or LocalBlobStore(data_root)
     return RetailV2Service(store, catalog_path)
 
 
@@ -45,9 +79,1520 @@ def _fetch_erp_catalog(url: str, tenant_id: str, token: str | None = None) -> li
     return products
 
 
+def _fetch_erp_offers(url: str, tenant_id: str, token: str | None = None) -> list[dict[str, Any]]:
+    headers = {"Content-Type": "application/json", "X-Tenant-Id": tenant_id}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = Request(url, headers=headers)
+    with urlopen(req, timeout=30) as response:  # nosec B310 - trusted demo configuration endpoint
+        payload = json.loads(response.read().decode("utf-8"))
+    offers = payload.get("offers") if isinstance(payload, dict) else None
+    return offers if isinstance(offers, list) else []
+
+
+def _cors_origins() -> list[str]:
+    configured = os.environ.get("WAVE_CORS_ORIGINS")
+    if configured:
+        return [item.strip() for item in configured.split(",") if item.strip()]
+    return [
+        "https://store.retail.demos.wavefunctionlabs.com",
+        "http://127.0.0.1:8804",
+        "http://localhost:8804",
+    ]
+
+
 def create_app(service: RetailV2Service | None = None) -> FastAPI:
     app = FastAPI(title="WaveSearch Labs Retail Search API")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     service = service or create_service()
+    rules_by_tenant: dict[str, dict[str, dict[str, Any]]] = {}
+    diagnostics_by_tenant: dict[str, deque[dict[str, Any]]] = {}
+    diagnostics_max_per_tenant = max(1, int(os.environ.get("RETAIL_V2_SEARCH_DIAGNOSTICS_MAX") or "50"))
+    # In-memory promotions index: mirrors the catalog runtime pattern (products_by_id + postings)
+    # but for offers/promotions, so promotions become a first-class searchable entity alongside
+    # products rather than only living as client-side offer objects.
+    promotions_by_tenant: dict[str, dict[str, dict[str, Any]]] = {}
+    promotion_postings_by_tenant: dict[str, dict[str, set[str]]] = {}
+    # Query redirects: exact-match (normalized) query text -> a fixed URL, mirroring Vertex AI
+    # Search for Retail's redirect concept (send certain queries straight to a campaign/collection
+    # page instead of, or alongside, ranked results).
+    redirects_by_tenant: dict[str, dict[str, dict[str, Any]]] = {}
+    # Personalization signals: per-tenant, per-visitor affinity built from view/click events
+    # (category/brand/tag counters plus recently-viewed product ids). Real behavior-driven
+    # personalization, not just logged-and-ignored telemetry -- see _track_visitor_event and
+    # _personalize.
+    visitor_signals_by_tenant: dict[str, dict[str, dict[str, Any]]] = {}
+    # Product-level performance counters (views/clicks/purchases/revenue), aggregated across all
+    # visitors -- the same event stream that feeds personalization also feeds a tunable ranking
+    # objective (Vertex AI Search for Retail's "optimization objectives": CTR, conversion rate,
+    # revenue), so an operator can choose what the ranking should actually optimize for, not just
+    # lexical/vector/AI relevance. See _track_product_performance and _apply_ranking_objective.
+    product_performance_by_tenant: dict[str, dict[str, dict[str, float]]] = {}
+    # Selected ranking objective per tenant: "relevance" (default, no objective re-ranking),
+    # "ctr", "conversion", or "revenue".
+    ranking_objective_by_tenant: dict[str, str] = {}
+    # Real, continuously-retraining ML model backing the ctr/conversion/revenue objectives above
+    # -- an online two-tower recommender (see retail_v2.ml_ranker), trained record-by-record as
+    # events arrive (no batch job). Used in place of the heuristic views/clicks/purchases ratio
+    # once a tenant's model for that objective has processed enough events to be trustworthy;
+    # falls back to the heuristic automatically before then. See _objective_score.
+    ml_ranker_registry = MLRankerRegistry()
+    ml_train_counter = {"n": 0}
+    # How many events a tenant's per-objective model must have trained on before its live-learned
+    # ranking supersedes the simpler heuristic ratio score -- low enough to demonstrate quickly,
+    # high enough that a handful of noisy early events don't dominate.
+    MIN_EVENTS_FOR_ML = 20
+    # Autocomplete vocabulary, rebuilt whenever the catalog runtime is (re)built: product titles
+    # (for direct navigation-style suggestions), indexed BM25 terms (for generic keyword
+    # completion), and category/brand names (for facet-style completion). Kept separate from the
+    # vector/BM25 indexes since autocomplete has different ranking needs (prefix match + startswith
+    # diversification) from full-text relevance scoring.
+    autocomplete_state: dict[str, list[str]] = {"titles": [], "terms": [], "categories": [], "brands": []}
+
+    def _load_json_blob(path: str, default: Any) -> Any:
+        try:
+            if service.store.exists(path):
+                return json.loads(service.store.read_text(path))
+        except Exception:
+            pass
+        return default
+
+    def _save_json_blob(path: str, obj: Any) -> None:
+        # Persistence failures (network blip, throttling) should never break serving -- the
+        # in-memory state stays correct either way, we just lose the ability to skip re-work on
+        # the next pod restart until a subsequent save succeeds.
+        try:
+            service.store.write_text(path, json.dumps(obj, ensure_ascii=True))
+        except Exception:
+            pass
+
+    def _sha256_text(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _content_hash(product: dict[str, Any]) -> str:
+        # Stable hash over the fields that actually drive indexing/enrichment/embeddings. Only a
+        # change to one of these should trigger re-enrichment/re-embedding for a product -- fields
+        # like inventory counters intentionally excluded would be noisy (they're not used for
+        # relevance text), but availability/price ARE included since merchandising-relevant facts
+        # can matter to an enrichment/embedding pass.
+        price_info = product.get("priceInfo") if isinstance(product.get("priceInfo"), dict) else {}
+        canonical = {
+            "title": str(product.get("title") or ""),
+            "description": str(product.get("description") or ""),
+            "categories": sorted(str(c) for c in (product.get("categories") or [])),
+            "brands": sorted(str(b) for b in (product.get("brands") or [])),
+            "tags": sorted(str(t) for t in (product.get("tags") or [])),
+            "availability": str(product.get("availability") or ""),
+            "price": str(price_info.get("price") if price_info.get("price") is not None else product.get("price") or ""),
+        }
+        return _sha256_text(json.dumps(canonical, sort_keys=True, ensure_ascii=True))
+
+    # Delta-ingestion caches, persisted to blob storage so a pod restart doesn't force a full
+    # re-embed/re-enrich of the entire catalog -- only genuinely new/changed products since the
+    # last ingest pay the LLM/embedding cost, whether that "last ingest" was in this process or a
+    # prior one that already saved its cache before being torn down.
+    # enrichment_cache: product_id -> {"hash": source content hash, "tags": [...], "description": "..."}
+    enrichment_cache: dict[str, dict[str, Any]] = _load_json_blob(ENRICHMENT_CACHE_BLOB, {})
+    # vector_cache: product_id -> {"hash": searchable-text hash, "vector": [...]}
+    vector_cache: dict[str, dict[str, Any]] = _load_json_blob(VECTOR_CACHE_BLOB, {})
+
+    llm_endpoint = str(os.environ.get("RETAIL_V2_LLM_ENDPOINT") or "").rstrip("/")
+    llm_deployment = str(os.environ.get("RETAIL_V2_LLM_DEPLOYMENT") or "").strip()
+    llm_api_version = str(os.environ.get("RETAIL_V2_LLM_API_VERSION") or "2025-01-01-preview").strip()
+    llm_api_key = str(os.environ.get("RETAIL_V2_LLM_API_KEY") or "").strip()
+    llm_timeout_seconds = max(1, int(os.environ.get("RETAIL_V2_LLM_TIMEOUT_SECONDS") or "4"))
+    llm_rerank_top_n = max(1, int(os.environ.get("RETAIL_V2_LLM_RERANK_TOP_N") or "20"))
+    # gpt-5-nano (and other GPT-5-family reasoning models) burns hidden "reasoning tokens" before
+    # emitting the actual JSON output unless reasoning_effort is explicitly capped. Profiling this
+    # showed ~256 reasoning tokens adding roughly 1s of latency by default for zero relevance
+    # benefit on a deterministic rerank/classify task -- "minimal" effort removes essentially all
+    # of it. max_completion_tokens bounds worst-case generation length (GPT-5 models use
+    # max_completion_tokens, not the legacy max_tokens parameter).
+    llm_reasoning_effort = str(os.environ.get("RETAIL_V2_LLM_REASONING_EFFORT") or "minimal").strip()
+    llm_max_completion_tokens = max(16, int(os.environ.get("RETAIL_V2_LLM_MAX_COMPLETION_TOKENS") or "300"))
+
+    # Hybrid (lexical + vector) search config. Embeddings reuse the same Azure OpenAI resource,
+    # endpoint, and API key as the chat/rerank deployment above -- just a different deployment
+    # name, since a text-embedding-3-small deployment now lives alongside gpt-5-nano on the same
+    # Foundry resource. Kept in its own env vars so the embedding model/timeouts can be tuned
+    # independently of the chat rerank/intent model.
+    embedding_deployment = str(os.environ.get("RETAIL_V2_EMBEDDING_DEPLOYMENT") or "text-embedding-3-small").strip()
+    embedding_timeout_seconds = max(1, int(os.environ.get("RETAIL_V2_EMBEDDING_TIMEOUT_SECONDS") or "15"))
+    embedding_batch_size = max(1, int(os.environ.get("RETAIL_V2_EMBEDDING_BATCH_SIZE") or "100"))
+    vector_top_k = max(1, int(os.environ.get("RETAIL_V2_VECTOR_TOP_K") or "30"))
+    rrf_k = max(1, int(os.environ.get("RETAIL_V2_RRF_K") or "60"))
+
+    def _as_bool(value: str | None, default: bool = False) -> bool:
+        if value is None:
+            return default
+        return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+    # Runtime AI toggles: seeded from env vars at startup but mutable afterwards via
+    # POST /search/admin/ai-toggle, so operators can flip rerank/intent/vector on or off live
+    # (e.g. to recover query latency) without a redeploy. Stored in a dict (not plain bools)
+    # so the nested closures below always read the live value.
+    #
+    # Vector search defaults ON (unlike rerank/intent, which default OFF): its latency cost is
+    # much smaller (~270-320ms for one embedding call vs ~1-1.8s of chat-completion reasoning for
+    # rerank/intent), and its failure mode when off is worse than "just slower" -- pure lexical
+    # BM25 matches on ANY shared token, so a query like "keep dry" can outrank truly relevant
+    # weatherproof products with a storage box that merely shares the word "keep", while missing
+    # products that describe the same concept with zero literal overlap. Rerank/intent still
+    # default off since their cost/benefit tradeoff is different (polish, not correctness).
+    ai_toggles: dict[str, bool] = {
+        "rerank": _as_bool(os.environ.get("RETAIL_V2_LLM_RERANK_ENABLED"), default=False),
+        "intent": _as_bool(os.environ.get("RETAIL_V2_LLM_INTENT_ENABLED"), default=False),
+        "vector": _as_bool(os.environ.get("RETAIL_V2_VECTOR_ENABLED"), default=True),
+        "enrich": _as_bool(os.environ.get("RETAIL_V2_LLM_ENRICH_ENABLED"), default=False),
+    }
+    llm_enrich_batch_size = max(1, int(os.environ.get("RETAIL_V2_LLM_ENRICH_BATCH_SIZE") or "15"))
+    llm_enrich_max_concurrency = max(1, int(os.environ.get("RETAIL_V2_LLM_ENRICH_MAX_CONCURRENCY") or "6"))
+    # Enrichment responses are much larger than rerank/intent (one keywords+features block PER
+    # product in the batch, not one short verdict) -- the shared llm_max_completion_tokens (tuned
+    # small for query-time latency) truncates a multi-product batch's JSON well before it
+    # completes, which silently fails to parse and is swallowed as "no enrichment" per batch.
+    # Give this call its own, much larger budget, scaled to batch size.
+    llm_enrich_max_completion_tokens = max(
+        256, int(os.environ.get("RETAIL_V2_LLM_ENRICH_MAX_COMPLETION_TOKENS") or str(300 * llm_enrich_batch_size))
+    )
+    # Similarly, the shared llm_timeout_seconds (tuned tight for query-time rerank/intent, which
+    # must not stall a live search) is far too short for a batch that generates thousands of
+    # output tokens -- ingest is off the query-serving path, so it's fine to wait much longer.
+    llm_enrich_timeout_seconds = max(5, int(os.environ.get("RETAIL_V2_LLM_ENRICH_TIMEOUT_SECONDS") or "60"))
+    # In-memory vector index: a single L2-normalized numpy matrix (vector_matrix, shape N x D)
+    # plus a parallel product-id list (vector_ids[i] <-> vector_matrix[i]), rebuilt from the full
+    # catalog whenever the runtime is (re)built while the vector toggle is on (see
+    # _rebuild_runtime_from_snapshot). Process-local, like the rest of the runtime state.
+    #
+    # This is still "brute-force" in the sense that a query compares against every stored vector
+    # (no ANN/graph index skips comparisons) -- but doing that comparison as ONE vectorized numpy
+    # matrix-vector multiply (BLAS-backed) rather than a Python for-loop over per-item dot
+    # products is a fundamentally different cost curve: comfortably sub-100ms up to roughly
+    # 100k-1M vectors on a single core. It does NOT solve real "millions of products" scale --
+    # see the "Vector search at real scale" doc card for what that actually requires (an external
+    # ANN index or managed vector store), which needs the same architectural shift already tracked
+    # for the catalog runtime (see the single-writer/multi-reader scaling item).
+    vector_ids: list[str] = []
+    vector_matrix: np.ndarray | None = None
+
+    def _tenant_rules(tenant_id: str) -> dict[str, dict[str, Any]]:
+        return rules_by_tenant.setdefault(tenant_id, {})
+
+    def _tenant_diagnostics(tenant_id: str) -> deque[dict[str, Any]]:
+        return diagnostics_by_tenant.setdefault(tenant_id, deque(maxlen=diagnostics_max_per_tenant))
+
+    def _merchandising_actions(tenant_id: str) -> tuple[set[str], set[str], list[str]]:
+        # Aggregate boost/bury/pin product IDs across every rule saved for this tenant via
+        # POST /search/admin/rules. Rules were previously stored here but never actually read by
+        # any query path -- boosting/burying/pinning a product had zero effect on ranking despite
+        # the admin GUI and docs describing it as a live merchandising control.
+        boosted: set[str] = set()
+        buried: set[str] = set()
+        pinned: list[str] = []
+        for rule in _tenant_rules(tenant_id).values():
+            actions = rule.get("actions") if isinstance(rule.get("actions"), dict) else {}
+            for entry in actions.get("boost") or []:
+                product_id = str((entry or {}).get("productId") or "").strip()
+                if product_id:
+                    boosted.add(product_id)
+            for entry in actions.get("bury") or []:
+                product_id = str((entry or {}).get("productId") or "").strip()
+                if product_id:
+                    buried.add(product_id)
+            for entry in actions.get("pin") or []:
+                product_id = str((entry or {}).get("productId") or "").strip()
+                if product_id and product_id not in pinned:
+                    pinned.append(product_id)
+        return boosted, buried, pinned
+
+    def _apply_merchandising(tenant_id: str, results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        # Applied as the FINAL ranking step, after lexical/vector retrieval and after any AI
+        # rerank -- merchandising rules represent an explicit business decision (e.g. "always
+        # surface this promoted SKU first") and should override, not be undone by, relevance
+        # ranking. Only re-ranks products already present in the result set; it never injects
+        # unrelated products that didn't match the query/filters.
+        boosted, buried, pinned = _merchandising_actions(tenant_id)
+        if not boosted and not buried and not pinned:
+            return results, {"applied": False, "pinned": 0, "boosted": 0, "buried": 0}
+        rows_by_id = {str(row.get("id")): row for row in results}
+        original_order = [str(row.get("id")) for row in results]
+
+        pinned_ids_present = [pid for pid in pinned if pid in rows_by_id]
+        pinned_id_set = set(pinned_ids_present)
+        remaining = [pid for pid in original_order if pid not in pinned_id_set]
+        # A product listed in both boost and bury (contradictory rules) is treated as buried --
+        # an explicit "hide this" decision should win over an explicit "promote this" decision.
+        boosted_ids = [pid for pid in remaining if pid in boosted and pid not in buried]
+        buried_ids = [pid for pid in remaining if pid in buried]
+        neutral_ids = [pid for pid in remaining if pid not in boosted and pid not in buried]
+
+        ordered_ids = pinned_ids_present + boosted_ids + neutral_ids + buried_ids
+        ordered_rows = [rows_by_id[pid] for pid in ordered_ids if pid in rows_by_id]
+        meta = {
+            "applied": True,
+            "pinned": len(pinned_ids_present),
+            "boosted": len(boosted_ids),
+            "buried": len(buried_ids),
+        }
+        return ordered_rows, meta
+
+    _SORTABLE_FIELDS = {"price", "title", "availability", "stock", "availableQuantity", "score"}
+
+    def _sort_key_value(row: dict[str, Any], field: str) -> Any:
+        product = row.get("product") if isinstance(row.get("product"), dict) else {}
+        if field == "price":
+            price_info = product.get("priceInfo") if isinstance(product.get("priceInfo"), dict) else {}
+            raw_price = price_info.get("price") if price_info.get("price") is not None else product.get("price")
+            try:
+                return float(raw_price) if raw_price is not None else 0.0
+            except (TypeError, ValueError):
+                return 0.0
+        if field == "title":
+            return str(row.get("title") or product.get("title") or "").lower()
+        if field == "availability":
+            return str(product.get("availability") or "").lower()
+        if field in ("stock", "availableQuantity"):
+            try:
+                return int(product.get("availableQuantity") or 0)
+            except (TypeError, ValueError):
+                return 0
+        if field == "score":
+            try:
+                return float(row.get("score") or 0.0)
+            except (TypeError, ValueError):
+                return 0.0
+        return 0
+
+    def _apply_sort(results: list[dict[str, Any]], sort_spec: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # Explicit sort (e.g. "price ascending") overrides relevance/merchandising ordering
+        # entirely for the requested field(s) -- matches how a storefront's "Sort by: Price low to
+        # high" control is expected to behave. Multiple fields are applied like a SQL ORDER BY:
+        # first entry is the primary key, subsequent entries break ties, achieved via a stable
+        # sort applied in reverse priority order.
+        if not sort_spec:
+            return results
+        ordered = list(results)
+        for spec in reversed(sort_spec):
+            field = str((spec or {}).get("field") or "").strip()
+            if field not in _SORTABLE_FIELDS:
+                continue
+            descending = str((spec or {}).get("order") or "asc").strip().lower() == "desc"
+            ordered.sort(key=lambda row: _sort_key_value(row, field), reverse=descending)
+        return ordered
+
+    def _parse_sort_spec(raw: Any) -> list[dict[str, Any]]:
+        if not isinstance(raw, list):
+            return []
+        parsed = []
+        for entry in raw:
+            if isinstance(entry, dict) and str(entry.get("field") or "").strip() in _SORTABLE_FIELDS:
+                parsed.append({"field": str(entry["field"]).strip(), "order": str(entry.get("order") or "asc").strip().lower()})
+        return parsed
+
+    _PRICE_BUCKETS = [(0.0, 25.0, "Under $25"), (25.0, 50.0, "$25-$50"), (50.0, 100.0, "$50-$100"), (100.0, 200.0, "$100-$200"), (200.0, None, "Over $200")]
+
+    def _compute_dynamic_facets(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        # "Dynamic" facets: derived from whatever attributes are actually present/varied in the
+        # CURRENT result set, rather than a fixed static list -- price-range buckets and a
+        # top-tags facet, on top of the lexical engine's existing static category/brand/
+        # availability facets. Computed over the full candidate pool (not just the current page)
+        # so facet counts reflect the whole matching set, matching how the existing category/
+        # brand facets already behave.
+        price_counts: dict[str, int] = {}
+        tag_counts: dict[str, int] = {}
+        for row in rows:
+            product = row.get("product") if isinstance(row.get("product"), dict) else {}
+            price_info = product.get("priceInfo") if isinstance(product.get("priceInfo"), dict) else {}
+            raw_price = price_info.get("price") if price_info.get("price") is not None else product.get("price")
+            try:
+                price = float(raw_price) if raw_price is not None else None
+            except (TypeError, ValueError):
+                price = None
+            if price is not None:
+                for lo, hi, label in _PRICE_BUCKETS:
+                    if price >= lo and (hi is None or price < hi):
+                        price_counts[label] = price_counts.get(label, 0) + 1
+                        break
+            for tag in (product.get("tags") or [])[:5]:
+                tag_counts[str(tag)] = tag_counts.get(str(tag), 0) + 1
+        dynamic: dict[str, Any] = {}
+        if len(price_counts) >= 2:
+            # Sort by the bucket's natural price order, not by count, so the facet reads as a
+            # sensible ascending price ladder rather than shuffled by popularity.
+            ordered_labels = [label for _, _, label in _PRICE_BUCKETS if label in price_counts]
+            dynamic["priceRanges"] = [{"value": label, "count": price_counts[label]} for label in ordered_labels]
+        if len(tag_counts) >= 2:
+            top_tags = sorted(tag_counts.items(), key=lambda kv: -kv[1])[:15]
+            dynamic["tags"] = [{"value": tag, "count": count} for tag, count in top_tags]
+        return dynamic
+
+    def _filter_trivial_facets(facets: dict[str, Any]) -> dict[str, Any]:
+        # A facet dimension with fewer than 2 distinct values can't actually help a shopper
+        # narrow anything (e.g. "Category: Outdoor (12)" as the only option once already filtered
+        # to Outdoor) -- dynamically omit it rather than always showing every facet dimension
+        # regardless of whether it's useful for the current result set.
+        return {name: rows for name, rows in facets.items() if isinstance(rows, list) and len(rows) >= 2}
+
+    def _tenant_redirects(tenant_id: str) -> dict[str, dict[str, Any]]:
+        return redirects_by_tenant.setdefault(tenant_id, {})
+
+    def _normalize_redirect_query(value: str) -> str:
+        return " ".join(tokenize(value))
+
+    def _tenant_visitor_signals(tenant_id: str) -> dict[str, dict[str, Any]]:
+        return visitor_signals_by_tenant.setdefault(tenant_id, {})
+
+    def _visitor_profile(tenant_id: str, visitor_id: str) -> dict[str, Any]:
+        signals = _tenant_visitor_signals(tenant_id)
+        return signals.setdefault(visitor_id, {"categories": {}, "brands": {}, "tags": {}, "recentProductIds": []})
+
+    def _tenant_product_performance(tenant_id: str) -> dict[str, dict[str, float]]:
+        return product_performance_by_tenant.setdefault(tenant_id, {})
+
+    def _track_product_performance(tenant_id: str, event_type: str, product: Any) -> None:
+        # Aggregate, tenant-wide (not per-visitor) product performance -- the raw material for a
+        # tunable ranking objective (CTR / conversion rate / revenue), mirroring Vertex AI Search
+        # for Retail's "optimization objectives" concept: pick what the ranking should actually
+        # optimize for, not just relevance.
+        perf = _tenant_product_performance(tenant_id).setdefault(product.id, {"views": 0.0, "clicks": 0.0, "purchases": 0.0, "revenue": 0.0})
+        if event_type == "view":
+            perf["views"] += 1
+        elif event_type == "click":
+            perf["clicks"] += 1
+        elif event_type == "purchase":
+            perf["purchases"] += 1
+            perf["revenue"] += float(product.price or 0.0)
+        _save_json_blob(PRODUCT_PERFORMANCE_BLOB, product_performance_by_tenant)
+
+    # Event -> affinity weight: stronger purchase-intent signals count for more than a passive
+    # view, so a single add-to-cart shifts personalization more than several idle views.
+    _EVENT_AFFINITY_WEIGHT = {"view": 1, "click": 2, "add_to_cart": 4, "purchase": 6}
+
+    def _track_visitor_event(tenant_id: str, payload: dict[str, Any]) -> None:
+        # Turns logged clickstream telemetry into an actual behavior-driven signal, instead of
+        # /search/events being a write-only sink nothing downstream ever reads. Every view/click/
+        # cart/purchase event referencing a product nudges that visitor's category/brand/tag
+        # affinity, which _personalize() later blends into their search ranking, AND feeds
+        # tenant-wide product performance counters that back the ranking objective feature.
+        visitor_id = str(payload.get("visitorId") or "").strip()
+        event_type = str(payload.get("eventType") or "").strip().lower()
+        product_id = str(payload.get("productId") or "").strip()
+        weight = _EVENT_AFFINITY_WEIGHT.get(event_type)
+        if not visitor_id or not weight or not product_id:
+            return
+        product = service.runtime.products_by_id.get(product_id)
+        if product is None:
+            return
+        _track_product_performance(tenant_id, event_type, product)
+        # Near-real-time model training: one online SGD step, right here on the request path,
+        # for every qualifying (click/add_to_cart/purchase) event -- see retail_v2.ml_ranker for
+        # why this is fast enough to not batch (a handful of ~16-dim vector ops).
+        ml_ranker_registry.train_event(
+            tenant_id, event_type, visitor_id, product_id, float(product.price or 0.0), list(service.runtime.products_by_id.keys())
+        )
+        ml_train_counter["n"] += 1
+        if ml_train_counter["n"] % 10 == 0:
+            # Snapshot every 10 trained events rather than every single one -- the in-memory
+            # model is already updated instantly either way, this only bounds how much blob-write
+            # traffic persistence costs (a lost snapshot just means replaying the last <10 events
+            # worth of learning after a restart, not losing accuracy while serving).
+            _save_json_blob(ML_RANKER_BLOB, ml_ranker_registry.snapshot())
+        profile = _visitor_profile(tenant_id, visitor_id)
+        for category in product.categories:
+            profile["categories"][category] = profile["categories"].get(category, 0) + weight
+        for brand in product.brands:
+            profile["brands"][brand] = profile["brands"].get(brand, 0) + weight
+        for tag in product.tags:
+            profile["tags"][tag] = profile["tags"].get(tag, 0) + weight
+        recent = [pid for pid in (profile.get("recentProductIds") or []) if pid != product_id]
+        recent.insert(0, product_id)
+        profile["recentProductIds"] = recent[:20]
+        _save_json_blob(VISITOR_SIGNALS_BLOB, visitor_signals_by_tenant)
+
+    def _top_affinity_keys(counter: dict[str, Any], limit: int) -> set[str]:
+        return {key for key, _ in sorted(counter.items(), key=lambda kv: -kv[1])[:limit]}
+
+    _VALID_RANKING_OBJECTIVES = {"relevance", "ctr", "conversion", "revenue"}
+
+    def _tenant_ranking_objective(tenant_id: str) -> str:
+        return ranking_objective_by_tenant.get(tenant_id, "relevance")
+
+    def _objective_score(tenant_id: str, objective: str, product_id: str, visitor_id: str = "") -> tuple[float, str]:
+        # Prefer the live-learned ML model once it has seen enough events for this tenant+
+        # objective to be trustworthy; otherwise fall back to the simple views/clicks/purchases
+        # ratio. The method used ("ml" vs "heuristic") is surfaced in the response metadata so
+        # it's never a silent black box which one produced a given ranking.
+        if objective in MLRankerRegistry.OBJECTIVES and ml_ranker_registry.is_ready(tenant_id, objective, MIN_EVENTS_FOR_ML):
+            return ml_ranker_registry.score(tenant_id, objective, visitor_id, product_id), "ml"
+        perf = _tenant_product_performance(tenant_id).get(product_id)
+        if not perf:
+            return 0.0, "heuristic"
+        if objective == "ctr":
+            return perf["clicks"] / max(1.0, perf["views"]), "heuristic"
+        if objective == "conversion":
+            return perf["purchases"] / max(1.0, perf["views"]), "heuristic"
+        if objective == "revenue":
+            return perf["revenue"], "heuristic"
+        return 0.0, "heuristic"
+
+    def _apply_ranking_objective(
+        tenant_id: str, results: list[dict[str, Any]], visitor_id: str = ""
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        # Applied AFTER AI rerank but BEFORE personalization/merchandising -- this represents a
+        # tenant-wide ranking POLICY decision (mirroring Vertex's model-level optimization
+        # objective: what should ranking optimize for, in general, for everyone), whereas
+        # personalization is a per-visitor nudge on top of that, and merchandising is the final
+        # explicit business override. Scored either by a live-retraining online ML model (see
+        # retail_v2.ml_ranker) once it has enough signal, or by a heuristic ratio over logged
+        # events before that -- see _objective_score.
+        objective = _tenant_ranking_objective(tenant_id)
+        if objective == "relevance" or not results:
+            return results, {"applied": False, "objective": objective}
+        scored = {
+            str(row.get("id")): _objective_score(tenant_id, objective, str(row.get("id")), visitor_id) for row in results
+        }
+        scores = {pid: value for pid, (value, _method) in scored.items()}
+        methods = {pid for pid, (_value, method) in scored.items() if method == "ml"}
+        if not any(score > 0 for score in scores.values()):
+            return results, {"applied": False, "objective": objective, "reason": "no performance data yet for these results"}
+        # Reciprocal Rank Fusion between the existing (relevance) order and the objective-score
+        # order -- nudges ranking toward the chosen objective without fully discarding relevance,
+        # same technique already used for hybrid search and personalization.
+        rrf_k = 60
+        original_rank = {str(row.get("id")): rank for rank, row in enumerate(results)}
+        objective_ranked = sorted(results, key=lambda row: scores.get(str(row.get("id")), 0.0), reverse=True)
+        objective_rank = {str(row.get("id")): rank for rank, row in enumerate(objective_ranked)}
+
+        def _blended_score(row: dict[str, Any]) -> float:
+            pid = str(row.get("id"))
+            return 1.0 / (rrf_k + original_rank.get(pid, len(results))) + 1.0 / (rrf_k + objective_rank.get(pid, len(results)))
+
+        reordered = sorted(results, key=_blended_score, reverse=True)
+        affected = sum(1 for score in scores.values() if score > 0)
+        method_used = "ml" if methods else "heuristic"
+        return reordered, {"applied": True, "objective": objective, "productsWithSignal": affected, "method": method_used}
+
+    def _personalize(tenant_id: str, visitor_id: str, results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        # Applied AFTER AI rerank but BEFORE merchandising -- a shopper's own history should be
+        # allowed to nudge relevance ordering, but an explicit business rule (pin/bury) still has
+        # the final say, same layering principle as rerank vs. merchandising.
+        if not visitor_id or not results:
+            return results, {"applied": False}
+        profile = _tenant_visitor_signals(tenant_id).get(visitor_id)
+        if not profile:
+            return results, {"applied": False}
+        top_categories = _top_affinity_keys(profile.get("categories") or {}, 3)
+        top_brands = _top_affinity_keys(profile.get("brands") or {}, 3)
+        top_tags = _top_affinity_keys(profile.get("tags") or {}, 8)
+        if not top_categories and not top_brands and not top_tags:
+            return results, {"applied": False}
+
+        def _affinity_score(row: dict[str, Any]) -> float:
+            product = row.get("product") if isinstance(row.get("product"), dict) else None
+            if product is None:
+                # /search/recommend rows are {"id","title"} only (no nested "product" dict) --
+                # fall back to looking the product up directly so personalization works there too.
+                record = service.runtime.products_by_id.get(str(row.get("id") or ""))
+                categories = list(record.categories) if record else []
+                brands = list(record.brands) if record else []
+                tags = list(record.tags) if record else []
+            else:
+                categories = product.get("categories") or []
+                brands = product.get("brands") or []
+                tags = product.get("tags") or []
+            score = 0.0
+            score += 2.0 * sum(1 for c in categories if c in top_categories)
+            score += 2.0 * sum(1 for b in brands if b in top_brands)
+            score += 1.0 * sum(1 for t in tags if t in top_tags)
+            return score
+
+        # Reciprocal Rank Fusion between the existing (relevance) order and an affinity-based
+        # order -- personalization nudges results toward the visitor's taste without fully
+        # overriding what the query itself says is relevant (same RRF technique already used to
+        # fuse lexical + vector retrieval).
+        rrf_k = 60
+        original_rank = {str(row.get("id")): rank for rank, row in enumerate(results)}
+        affinity_ranked = sorted(results, key=_affinity_score, reverse=True)
+        affinity_rank = {str(row.get("id")): rank for rank, row in enumerate(affinity_ranked)}
+
+        def _blended_score(row: dict[str, Any]) -> float:
+            pid = str(row.get("id"))
+            return 1.0 / (rrf_k + original_rank.get(pid, len(results))) + 1.0 / (rrf_k + affinity_rank.get(pid, len(results)))
+
+        personalized = sorted(results, key=_blended_score, reverse=True)
+        affected = sum(1 for row in results if _affinity_score(row) > 0)
+        return personalized, {
+            "applied": True,
+            "visitorId": visitor_id,
+            "topCategories": sorted(top_categories),
+            "topBrands": sorted(top_brands),
+            "productsMatchingAffinity": affected,
+        }
+
+    _TRAILING_VARIANT_RE = re.compile(r"[\s\-/]*(\d+|[a-z]\s*/\s*[a-z][a-z ]*)\s*$", re.IGNORECASE)
+
+    def _diversify_titles(titles: list[str], limit: int) -> list[str]:
+        # Demo catalogs are full of patterned SKU variants ("Summit Boot 112", "Summit Boot 117",
+        # "Summit Boot 122", ...) -- without this, autocomplete for "boot" would show 20 near-
+        # identical suggestions instead of a useful, varied set. Collapse to one suggestion per
+        # "base" (title with trailing SKU number / size-color variant suffix stripped).
+        seen_bases: set[str] = set()
+        out: list[str] = []
+        for title in titles:
+            base = _TRAILING_VARIANT_RE.sub("", title).strip().lower()
+            if base in seen_bases:
+                continue
+            seen_bases.add(base)
+            out.append(title)
+            if len(out) >= limit:
+                break
+        return out
+
+    def _rebuild_autocomplete_vocabulary() -> None:
+        titles: list[str] = []
+        categories: set[str] = set()
+        brands: set[str] = set()
+        for product in service.runtime.products_by_id.values():
+            if product.title:
+                titles.append(product.title)
+            categories.update(c for c in product.categories if c)
+            brands.update(b for b in product.brands if b)
+        autocomplete_state["titles"] = sorted(set(titles))
+        autocomplete_state["terms"] = sorted(service.runtime.postings.keys())
+        autocomplete_state["categories"] = sorted(categories)
+        autocomplete_state["brands"] = sorted(brands)
+
+    def _autocomplete(prefix: str, limit: int) -> dict[str, Any]:
+        prefix_norm = prefix.strip().lower()
+        if not prefix_norm:
+            return {"query": prefix, "suggestions": [], "categorySuggestions": [], "brandSuggestions": [], "correctedQuery": None}
+
+        def _prefix_matches(pool: list[str]) -> list[str]:
+            return [item for item in pool if item.lower().startswith(prefix_norm)]
+
+        title_matches = _prefix_matches(autocomplete_state.get("titles", []))
+        category_matches = _prefix_matches(autocomplete_state.get("categories", []))[:5]
+        brand_matches = _prefix_matches(autocomplete_state.get("brands", []))[:5]
+        term_matches = [t for t in _prefix_matches(autocomplete_state.get("terms", [])) if t != prefix_norm]
+
+        corrected_query: str | None = None
+        if not title_matches and not term_matches and not category_matches and not brand_matches:
+            # Nothing at all matches this prefix -- offer a spelling-corrected suggestion instead
+            # of an empty dropdown (e.g. "jaket" -> "jacket").
+            vocabulary = autocomplete_state.get("terms", []) + [t.lower() for t in autocomplete_state.get("titles", [])]
+            close = difflib.get_close_matches(prefix_norm, vocabulary, n=1, cutoff=0.72)
+            if close:
+                corrected_query = close[0]
+                title_matches = _prefix_matches(autocomplete_state.get("titles", []) or []) or [
+                    t for t in autocomplete_state.get("titles", []) if close[0] in t.lower()
+                ]
+
+        diversified_titles = _diversify_titles(title_matches, limit)
+        return {
+            "query": prefix,
+            "suggestions": diversified_titles,
+            "termSuggestions": term_matches[: max(0, limit - len(diversified_titles))],
+            "categorySuggestions": category_matches,
+            "brandSuggestions": brand_matches,
+            "correctedQuery": corrected_query,
+        }
+
+    def _correct_query_for_lexical_search(query: str) -> tuple[str, dict[str, Any] | None]:
+        # Typo tolerance for the LEXICAL retrieval path only: if a query term doesn't exist
+        # anywhere in the indexed BM25 vocabulary at all (zero possible candidates), try a close
+        # vocabulary match and substitute it before the lexical search runs. Deliberately does NOT
+        # touch the vector/embedding query (hybrid search already tolerates minor typos via
+        # subword-level embedding similarity, and "correcting" a valid natural-language word based
+        # on a fuzzy string match risk corrupting a semantic query far more than it helps).
+        terms = tokenize(query)
+        if not terms:
+            return query, None
+        vocabulary = list(service.runtime.postings.keys())
+        corrections: dict[str, str] = {}
+        corrected_terms: list[str] = []
+        for term in terms:
+            if term in service.runtime.postings:
+                corrected_terms.append(term)
+                continue
+            close = difflib.get_close_matches(term, vocabulary, n=1, cutoff=0.78)
+            if close and close[0] != term:
+                corrections[term] = close[0]
+                corrected_terms.append(close[0])
+            else:
+                corrected_terms.append(term)
+        if not corrections:
+            return query, None
+        return " ".join(corrected_terms), {"original": query, "corrected": " ".join(corrected_terms), "termsCorrected": corrections}
+
+    def _promotion_searchable_text(promo: dict[str, Any]) -> str:
+        return " ".join(
+            str(promo.get(field) or "")
+            for field in ("id", "title", "subtitle", "cta", "category", "brand", "query", "discountType")
+        )
+
+    def _index_promotions(tenant_id: str, promotions: list[dict[str, Any]], persist: bool = True) -> int:
+        store_by_id: dict[str, dict[str, Any]] = {}
+        postings: dict[str, set[str]] = {}
+        for promo in promotions:
+            if not isinstance(promo, dict):
+                continue
+            promo_id = str(promo.get("id") or "").strip()
+            if not promo_id:
+                continue
+            store_by_id[promo_id] = promo
+            for term in tokenize(_promotion_searchable_text(promo)):
+                postings.setdefault(term, set()).add(promo_id)
+        promotions_by_tenant[tenant_id] = store_by_id
+        promotion_postings_by_tenant[tenant_id] = postings
+        if persist:
+            _save_json_blob(PROMOTIONS_BLOB, promotions_by_tenant)
+        return len(store_by_id)
+
+    def _search_promotions(tenant_id: str, query: str) -> list[dict[str, Any]]:
+        store_by_id = promotions_by_tenant.get(tenant_id, {})
+        if not query:
+            return list(store_by_id.values())
+        postings = promotion_postings_by_tenant.get(tenant_id, {})
+        terms = tokenize(query)
+        if not terms:
+            return list(store_by_id.values())
+        matched_ids: set[str] = set()
+        for term in terms:
+            # Exact token match, plus a prefix/stem match against indexed terms so common plural
+            # variants (jacket/jackets, headphone/headphones) still find results without needing
+            # a full stemmer -- the promotions corpus is small so this scan is cheap.
+            for indexed_term, ids in postings.items():
+                if indexed_term == term or indexed_term.startswith(term) or term.startswith(indexed_term):
+                    matched_ids |= ids
+        return [store_by_id[pid] for pid in matched_ids if pid in store_by_id]
+
+    def _diagnostic_row(row: dict[str, Any]) -> dict[str, Any]:
+        product = row.get("product") if isinstance(row.get("product"), dict) else {}
+        price_info = product.get("priceInfo") if isinstance(product.get("priceInfo"), dict) else {}
+        return {
+            "id": str(row.get("id") or product.get("id") or ""),
+            "title": str(row.get("title") or product.get("title") or ""),
+            "score": row.get("score"),
+            "price": price_info.get("price"),
+            "availability": str(product.get("availability") or ""),
+        }
+
+    def _record_diagnostic(
+        context: TenantContext,
+        query: str,
+        filters: dict[str, Any],
+        page_size: int,
+        response: dict[str, Any],
+        pre_results: list[dict[str, Any]],
+        post_results: list[dict[str, Any]],
+        ai_meta: dict[str, Any],
+    ) -> str:
+        diagnostic_id = uuid4().hex
+        entry = {
+            "id": diagnostic_id,
+            "tenantId": context.tenant_id,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "query": query,
+            "filters": filters,
+            "pageSize": page_size,
+            "totalSize": response.get("totalSize"),
+            "facets": response.get("facets"),
+            "appliedFilters": response.get("appliedFilters"),
+            "preResults": [_diagnostic_row(row) for row in pre_results],
+            "postResults": [_diagnostic_row(row) for row in post_results],
+            "ai": ai_meta,
+        }
+        _tenant_diagnostics(context.tenant_id).append(entry)
+        return diagnostic_id
+
+    def _diagnostic_summary(entry: dict[str, Any]) -> dict[str, Any]:
+        pre_ids = [row.get("id") for row in entry.get("preResults", [])]
+        post_ids = [row.get("id") for row in entry.get("postResults", [])]
+        return {
+            "id": entry.get("id"),
+            "timestamp": entry.get("timestamp"),
+            "query": entry.get("query"),
+            "filters": entry.get("filters"),
+            "totalSize": entry.get("totalSize"),
+            "resultCount": len(post_ids),
+            "rerankApplied": bool((entry.get("ai") or {}).get("rerank", {}).get("applied")),
+            "intentApplied": bool((entry.get("ai") or {}).get("intent", {}).get("applied")),
+            "orderChanged": pre_ids != post_ids,
+        }
+
+    def _append_event(context: TenantContext, payload: dict[str, Any], partition_key: str | None) -> dict[str, Any]:
+        _track_visitor_event(context.tenant_id, payload)
+        if partition_key:
+            payload_with_partition = {**payload, "partitionKey": partition_key}
+            return service.append_event(context, payload_with_partition)
+        return service.append_event(context, payload)
+
+    def _append_rule(context: TenantContext, payload: dict[str, Any], partition_key: str | None) -> dict[str, Any]:
+        row = dict(payload)
+        if partition_key:
+            row["partitionKey"] = partition_key
+        result = service.append_rule(context, row)
+        rule_id = str(row.get("id") or "").strip()
+        if rule_id:
+            _tenant_rules(context.tenant_id)[rule_id] = row
+            _save_json_blob(RULES_BLOB, rules_by_tenant)
+        return result
+
+    def _status_payload() -> dict[str, Any]:
+        if hasattr(service, "status") and callable(getattr(service, "status")):
+            return dict(service.status())
+        return {"runtimeVersion": "runtime-v1"}
+
+    def _analytics_payload(context: TenantContext) -> dict[str, Any]:
+        if hasattr(service, "analytics_summary") and callable(getattr(service, "analytics_summary")):
+            return dict(service.analytics_summary(context))
+        status = _status_payload()
+        return {
+            "summarySource": "service.status",
+            "eventsSeen": status.get("eventOverlayCount", 0),
+            "inventoryOverlays": status.get("inventoryOverlayCount", 0),
+            "productCount": status.get("productCount", 0),
+            "runtimeVersion": status.get("runtimeVersion", "runtime-v1"),
+        }
+
+    def _admin_config_payload(context: TenantContext) -> dict[str, Any]:
+        ai_state = {
+            "available": _llm_available(),
+            "rerankEnabled": ai_toggles["rerank"],
+            "intentEnabled": ai_toggles["intent"],
+            "enrichEnabled": ai_toggles["enrich"],
+            "vectorEnabled": ai_toggles["vector"],
+            "vectorAvailable": _embeddings_available(),
+            "vectorIndexSize": len(vector_ids),
+        }
+        if hasattr(service, "get_admin_config") and callable(getattr(service, "get_admin_config")):
+            raw = dict(service.get_admin_config(context))
+            raw.setdefault("rules", list(_tenant_rules(context.tenant_id).values()))
+            raw.setdefault("ai", ai_state)
+            return raw
+        return {
+            "rules": list(_tenant_rules(context.tenant_id).values()),
+            "status": _status_payload(),
+            "ai": ai_state,
+            "tuningLevers": {
+                "merchandisingRules": "POST /search/admin/rules",
+                "catalogIngest": "POST /search/ingest/from-erp",
+                "behaviorEvents": "POST /search/events",
+                "queryAndRecommendInputs": "POST /search/query + POST /search/recommend",
+                "aiToggle": "POST /search/admin/ai-toggle",
+                "vectorIndexRebuild": "POST /search/admin/vector-index/rebuild",
+            },
+        }
+
+    def _rebuild_runtime_from_snapshot(snapshot: Path, ingested_count: int, products: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        if hasattr(service, "rebuild_runtime") and callable(getattr(service, "rebuild_runtime")):
+            result = dict(service.rebuild_runtime({"catalogPath": str(snapshot)}))
+        else:
+            service.runtime = RuntimeBuilder().build(load_catalog_file(snapshot))
+            status = _status_payload()
+            result = {"accepted": True, "ingestedCount": ingested_count, **status, "rebuildMode": "runtime_builder_fallback"}
+        # Persist the final (post-enrichment) catalog to blob storage so the next pod restart
+        # rebuilds the runtime from this ingested/enriched state instead of falling back to the
+        # static sample-catalog.json -- this is what makes delta ingestion meaningful across
+        # restarts, not just within a single process's lifetime.
+        if products is not None:
+            _save_json_blob(CATALOG_PRODUCTS_BLOB, {"products": products})
+        # Rebuild the vector index alongside the lexical runtime whenever hybrid search is
+        # enabled, so a fresh ingest immediately has vector coverage for the new catalog rather
+        # than serving stale/missing embeddings for newly-added products. Delta-aware: only
+        # genuinely new/changed products (by searchable-text hash) are actually re-embedded.
+        # Non-fatal: embedding failures (quota, network) never fail catalog ingestion itself.
+        if ai_toggles["vector"] and _embeddings_available():
+            try:
+                result["vectorIndexed"] = _build_vector_index()
+            except Exception as exc:
+                result["vectorIndexError"] = str(exc)
+        _rebuild_autocomplete_vocabulary()
+        return result
+
+    def _llm_available() -> bool:
+        return bool(llm_endpoint and llm_deployment and llm_api_key)
+
+    def _embeddings_available() -> bool:
+        return bool(llm_endpoint and llm_api_key and embedding_deployment)
+
+    def _embed_texts(texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        if not _embeddings_available():
+            raise RuntimeError("embedding endpoint is not configured")
+        url = f"{llm_endpoint}/openai/deployments/{embedding_deployment}/embeddings?api-version={llm_api_version}"
+        vectors: list[list[float] | None] = [None] * len(texts)
+        for start in range(0, len(texts), embedding_batch_size):
+            batch = texts[start : start + embedding_batch_size]
+            body = {"input": batch}
+            req = Request(
+                url=url,
+                method="POST",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json", "api-key": llm_api_key},
+            )
+            try:
+                with urlopen(req, timeout=embedding_timeout_seconds) as response:  # nosec B310 - trusted configured endpoint
+                    payload = json.loads(response.read().decode("utf-8"))
+            except HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"embedding HTTP {exc.code}: {detail}") from exc
+            except URLError as exc:
+                raise RuntimeError(f"embedding network error: {exc}") from exc
+            for row in payload.get("data", []):
+                index = int(row.get("index", 0))
+                vectors[start + index] = [float(v) for v in row.get("embedding", [])]
+        return [vector or [] for vector in vectors]
+
+    def _product_searchable_text(product: Any) -> str:
+        return " ".join(
+            [
+                str(getattr(product, "title", "") or ""),
+                str(getattr(product, "description", "") or ""),
+                " ".join(getattr(product, "categories", []) or []),
+                " ".join(getattr(product, "brands", []) or []),
+                " ".join(getattr(product, "tags", []) or []),
+            ]
+        )
+
+    def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
+        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        return matrix / norms
+
+    def _build_vector_index() -> dict[str, int]:
+        nonlocal vector_matrix
+        products = list(service.runtime.products_by_id.items())
+        if not products:
+            vector_ids.clear()
+            vector_matrix = None
+            return {"total": 0, "embedded": 0, "reused": 0}
+        ids: list[str] = []
+        rows: list[list[float] | None] = []
+        to_embed_positions: list[int] = []
+        to_embed_texts: list[str] = []
+        to_embed_hashes: list[str] = []
+        for product_id, product in products:
+            text = _product_searchable_text(product)
+            text_hash = _sha256_text(text)
+            cached = vector_cache.get(product_id)
+            ids.append(product_id)
+            if cached and cached.get("hash") == text_hash and cached.get("vector"):
+                # Text driving this product's embedding hasn't changed since it was last
+                # embedded (same title/description/categories/brands/tags) -- reuse the cached
+                # vector instead of paying for another embeddings call. This is the delta-
+                # ingestion behavior: adding one new product, or editing one existing product,
+                # only re-embeds that product, not the whole catalog.
+                rows.append(cached["vector"])
+            else:
+                rows.append(None)
+                to_embed_positions.append(len(ids) - 1)
+                to_embed_texts.append(text)
+                to_embed_hashes.append(text_hash)
+        embedded_count = len(to_embed_texts)
+        reused_count = len(ids) - embedded_count
+        if to_embed_texts:
+            new_vectors = _embed_texts(to_embed_texts)
+            for position, vector, text_hash in zip(to_embed_positions, new_vectors, to_embed_hashes):
+                rows[position] = vector
+                product_id = ids[position]
+                if vector:
+                    vector_cache[product_id] = {"hash": text_hash, "vector": vector}
+        # Drop cache entries for products no longer in the catalog so the persisted cache doesn't
+        # grow unboundedly across many ingest cycles as products are removed/replaced.
+        for stale_id in list(vector_cache.keys()):
+            if stale_id not in {pid for pid, _ in products}:
+                vector_cache.pop(stale_id, None)
+        vector_ids[:] = ids
+        valid_rows = [row for row in rows if row]
+        vector_matrix = _normalize_rows(np.asarray(valid_rows, dtype=np.float32)) if valid_rows else None
+        _save_json_blob(VECTOR_CACHE_BLOB, vector_cache)
+        return {"total": len(ids), "embedded": embedded_count, "reused": reused_count}
+
+    def _passes_non_text_filters(product: Any, filters: dict[str, Any]) -> bool:
+        # Mirrors the non-text filter predicates in retail_v2.runtime.SearchEngine.search, applied
+        # here to vector-only candidates (products a pure lexical/BM25 pass would never surface
+        # because they share zero query tokens, which is the entire point of adding vector
+        # retrieval) so hybrid results respect the same category/brand/tag/availability/price/stock
+        # constraints as the lexical path.
+        def _norm(value: str) -> str:
+            return value.strip().lower()
+
+        def _to_num(value: Any) -> float | None:
+            if value is None:
+                return None
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        category_filter = _norm(str(filters.get("category") or ""))
+        brand_filter = _norm(str(filters.get("brand") or ""))
+        tag_filter = _norm(str(filters.get("tag") or ""))
+        availability_filter = _norm(str(filters.get("availability") or ""))
+        min_price = _to_num(filters.get("minPrice"))
+        max_price = _to_num(filters.get("maxPrice"))
+        min_stock = _to_num(filters.get("minStock"))
+        max_stock = _to_num(filters.get("maxStock"))
+
+        categories = [c.lower() for c in (product.categories or [])]
+        brands = [b.lower() for b in (product.brands or [])]
+        tags = [t.lower() for t in (product.tags or [])]
+        availability = str(product.availability or "IN_STOCK").strip().lower()
+        stock = int(product.available_quantity or 0)
+        price = product.price
+        if price is None:
+            raw_price_info = product.raw.get("priceInfo") if isinstance(product.raw.get("priceInfo"), dict) else {}
+            price = raw_price_info.get("price")
+        try:
+            price_num = float(price) if price is not None else 0.0
+        except (TypeError, ValueError):
+            price_num = 0.0
+
+        if category_filter and not any(category_filter in c for c in categories):
+            return False
+        if brand_filter and not any(brand_filter in b for b in brands):
+            return False
+        if tag_filter and not any(tag_filter in t for t in tags):
+            return False
+        if availability_filter and availability != availability_filter:
+            return False
+        if min_price is not None and price_num < min_price:
+            return False
+        if max_price is not None and price_num > max_price:
+            return False
+        if min_stock is not None and stock < min_stock:
+            return False
+        if max_stock is not None and stock > max_stock:
+            return False
+        return True
+
+    def _vector_search(query: str, filters: dict[str, Any]) -> list[tuple[str, float]]:
+        if not query.strip() or vector_matrix is None or not vector_ids:
+            return []
+        query_vec = _embed_texts([query])[0]
+        if not query_vec:
+            return []
+        q = np.asarray(query_vec, dtype=np.float32)
+        q_norm = float(np.linalg.norm(q))
+        if q_norm == 0.0:
+            return []
+        q = q / q_norm
+        # One vectorized matrix-vector multiply (BLAS-backed) against every stored vector, instead
+        # of a Python for-loop computing dot/norm per item -- comfortably sub-100ms up to roughly
+        # 100k-1M vectors on a single core (rows are already L2-normalized, so this dot product
+        # *is* cosine similarity). Still "brute-force" in that every vector participates -- see the
+        # "Vector search at real scale" docs for what genuinely large catalogs (millions of SKUs)
+        # need instead (an ANN index or managed vector store).
+        similarities = vector_matrix @ q
+        order = np.argsort(-similarities)
+        hits: list[tuple[str, float]] = []
+        for idx in order:
+            product_id = vector_ids[int(idx)]
+            product = service.runtime.products_by_id.get(product_id)
+            if product is None or not _passes_non_text_filters(product, filters):
+                continue
+            hits.append((product_id, float(similarities[int(idx)])))
+            if len(hits) >= vector_top_k:
+                break
+        return hits
+
+    def _hybrid_fuse(query: str, lexical_response: dict[str, Any], filters: dict[str, Any], page_size: int) -> dict[str, Any]:
+        # Reciprocal Rank Fusion (RRF): combine the lexical (BM25) ranking with an independent
+        # vector-similarity ranking by rank position rather than raw score (BM25 and cosine
+        # similarity scores are on incomparable scales), so a product ranked highly by *either*
+        # method surfaces near the top of the fused list -- including products the lexical pass
+        # never considered at all because they share no tokens with the query.
+        lexical_results = list(lexical_response.get("results") or [])
+        lexical_rows_by_id = {str(row.get("id")): row for row in lexical_results}
+        lexical_rank_by_id = {pid: rank for rank, pid in enumerate(lexical_rows_by_id.keys())}
+        vector_hits = _vector_search(query, filters)
+        vector_rank_by_id = {pid: rank for rank, (pid, _) in enumerate(vector_hits)}
+        vector_score_by_id = {pid: score for pid, score in vector_hits}
+        if not vector_hits:
+            return {**lexical_response, "hybrid": {"enabled": True, "applied": False, "reason": "no vector candidates"}}
+
+        combined_ids = list(dict.fromkeys(list(lexical_rank_by_id.keys()) + list(vector_rank_by_id.keys())))
+        rrf_scores: dict[str, float] = {}
+        for product_id in combined_ids:
+            score = 0.0
+            if product_id in lexical_rank_by_id:
+                score += 1.0 / (rrf_k + lexical_rank_by_id[product_id] + 1)
+            if product_id in vector_rank_by_id:
+                score += 1.0 / (rrf_k + vector_rank_by_id[product_id] + 1)
+            rrf_scores[product_id] = score
+        combined_ids.sort(key=lambda pid: rrf_scores[pid], reverse=True)
+
+        fused_results = []
+        vector_only_count = 0
+        for product_id in combined_ids[:page_size]:
+            if product_id in lexical_rows_by_id:
+                fused_results.append(lexical_rows_by_id[product_id])
+            else:
+                product = service.runtime.products_by_id.get(product_id)
+                if product is None:
+                    continue
+                vector_only_count += 1
+                fused_results.append(
+                    {
+                        "id": product.id,
+                        "title": product.title,
+                        "score": round(vector_score_by_id.get(product_id, 0.0), 4),
+                        "product": product.raw,
+                        "vectorOnly": True,
+                    }
+                )
+        response = dict(lexical_response)
+        response["results"] = fused_results
+        response["totalSize"] = len(combined_ids)
+        response["hybrid"] = {
+            "enabled": True,
+            "applied": True,
+            "lexicalCandidates": len(lexical_rank_by_id),
+            "vectorCandidates": len(vector_rank_by_id),
+            "fusedCandidates": len(combined_ids),
+            "vectorOnlyInPage": vector_only_count,
+            "rrfK": rrf_k,
+        }
+        return response
+
+    def _extract_json_object(raw_text: str) -> dict[str, Any]:
+        text = (raw_text or "").strip()
+        if not text:
+            raise ValueError("empty LLM response")
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        first = text.find("{")
+        last = text.rfind("}")
+        if first >= 0 and last > first:
+            parsed = json.loads(text[first : last + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        raise ValueError("LLM response was not a JSON object")
+
+    def _llm_chat_json(
+        system_prompt: str,
+        user_payload: dict[str, Any],
+        max_completion_tokens: int | None = None,
+        timeout_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        if not _llm_available():
+            raise RuntimeError("LLM endpoint is not configured")
+        url = f"{llm_endpoint}/openai/deployments/{llm_deployment}/chat/completions?api-version={llm_api_version}"
+        base_body = {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=True)},
+            ],
+            "reasoning_effort": llm_reasoning_effort,
+            "max_completion_tokens": max_completion_tokens if max_completion_tokens is not None else llm_max_completion_tokens,
+        }
+        attempts = [
+            {**base_body, "response_format": {"type": "json_object"}},
+            base_body,
+        ]
+        request_timeout = timeout_seconds if timeout_seconds is not None else llm_timeout_seconds
+        payload: dict[str, Any] | None = None
+        last_error: Exception | None = None
+        for body in attempts:
+            req = Request(
+                url=url,
+                method="POST",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json", "api-key": llm_api_key},
+            )
+            try:
+                with urlopen(req, timeout=request_timeout) as response:  # nosec B310 - trusted configured endpoint
+                    payload = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                last_error = RuntimeError(f"LLM HTTP {exc.code}: {detail}")
+                continue
+            except URLError as exc:
+                last_error = RuntimeError(f"LLM network error: {exc}")
+                continue
+        if payload is None:
+            raise last_error or RuntimeError("LLM request failed")
+        raw_content = (
+            payload.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        return _extract_json_object(raw_content)
+
+    def _llm_vision_chat_json(
+        system_prompt: str,
+        text_prompt: str,
+        image_data_url: str,
+        max_completion_tokens: int | None = None,
+        timeout_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        # Same chat-completions call as _llm_chat_json, but with a multimodal user message (text +
+        # image_url content parts) instead of a plain-text JSON payload. gpt-5-nano (the same
+        # deployment already used for rerank/intent/enrichment) accepts vision input natively --
+        # confirmed by a direct test call -- so no separate vision-capable deployment or CLIP-style
+        # image-embedding service is needed for "what's in this uploaded image" search.
+        if not _llm_available():
+            raise RuntimeError("LLM endpoint is not configured")
+        url = f"{llm_endpoint}/openai/deployments/{llm_deployment}/chat/completions?api-version={llm_api_version}"
+        base_body = {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text_prompt},
+                        {"type": "image_url", "image_url": {"url": image_data_url}},
+                    ],
+                },
+            ],
+            "reasoning_effort": llm_reasoning_effort,
+            "max_completion_tokens": max_completion_tokens if max_completion_tokens is not None else llm_max_completion_tokens,
+        }
+        attempts = [
+            {**base_body, "response_format": {"type": "json_object"}},
+            base_body,
+        ]
+        request_timeout = timeout_seconds if timeout_seconds is not None else llm_timeout_seconds
+        payload: dict[str, Any] | None = None
+        last_error: Exception | None = None
+        for body in attempts:
+            req = Request(
+                url=url,
+                method="POST",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json", "api-key": llm_api_key},
+            )
+            try:
+                with urlopen(req, timeout=request_timeout) as response:  # nosec B310 - trusted configured endpoint
+                    payload = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                last_error = RuntimeError(f"LLM HTTP {exc.code}: {detail}")
+                continue
+            except URLError as exc:
+                last_error = RuntimeError(f"LLM network error: {exc}")
+                continue
+        if payload is None:
+            raise last_error or RuntimeError("LLM request failed")
+        raw_content = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return _extract_json_object(raw_content)
+
+    def _classify_query_intent(query: str, filters: dict[str, Any]) -> dict[str, Any]:
+        if not ai_toggles["intent"] or not _llm_available():
+            return {"enabled": ai_toggles["intent"] and _llm_available(), "applied": False}
+        system_prompt = (
+            "You classify retail search intent. "
+            "Return strict JSON with keys: intent (string), confidence (0-1), inferredFilters (object), "
+            "notes (string, max 15 words)."
+        )
+        result = _llm_chat_json(system_prompt, {"query": query, "filters": filters})
+        return {
+            "enabled": True,
+            "applied": True,
+            "intent": str(result.get("intent") or "unknown"),
+            "confidence": float(result.get("confidence") or 0.0),
+            "inferredFilters": result.get("inferredFilters") if isinstance(result.get("inferredFilters"), dict) else {},
+            "notes": str(result.get("notes") or ""),
+        }
+
+    def _expand_visual_query(description: str) -> dict[str, Any]:
+        # "Generative image-text search" without actually generating an image: rather than
+        # rendering a picture and running image-embedding similarity (which would need a whole
+        # separate vision-embedding pipeline and, for real image generation, an Azure OpenAI
+        # resource in a different region entirely -- gpt-image-1 isn't deployable in this
+        # resource's region), an LLM directly expands a vague visual description ("something that
+        # looks like a shoe") into the concrete category/color/material/style/use-case words a
+        # real product listing for that item would contain, then that expanded text is run
+        # through the existing hybrid (lexical + vector) search pipeline unchanged. Gets most of
+        # the value of visual query understanding with zero new infrastructure.
+        system_prompt = (
+            "A shopper described what they're looking for in visual/descriptive terms -- they may be "
+            "vague (e.g. 'something that looks like a shoe') or detailed (e.g. 'a red waterproof "
+            "hiking boot'). Expand this into a concrete search-engine query: the likely category, "
+            "material, color, shape, style, and use-case words a real product listing for this item "
+            "would contain. Do not invent a specific brand or SKU. Return strict JSON with keys: "
+            "'expandedQuery' (string, a natural search query combining the inferred terms), "
+            "'detectedCategory' (string, best-guess general category), 'attributes' (array of "
+            "strings, inferred visual attributes like color/material/style)."
+        )
+        result = _llm_chat_json(system_prompt, {"description": description}, max_completion_tokens=300)
+        return {
+            "expandedQuery": str(result.get("expandedQuery") or description),
+            "detectedCategory": str(result.get("detectedCategory") or ""),
+            "attributes": [str(a) for a in (result.get("attributes") or []) if str(a).strip()],
+        }
+
+    def _analyze_uploaded_image(image_data_url: str) -> dict[str, Any]:
+        # The other direction of visual search: a shopper uploads a real photo (not a generated
+        # one) and wants products that look like what's in it. Rather than a separate CLIP-style
+        # image-embedding model/index, gpt-5-nano's native vision input directly identifies what's
+        # in the photo and describes it in the same category/color/material/style vocabulary
+        # _expand_visual_query produces, so the result feeds the identical downstream search
+        # pipeline either way.
+        system_prompt = (
+            "A shopper uploaded a photo of something they want to find similar retail products for. "
+            "Identify what the main subject/product in the image is and describe it the way a "
+            "product listing would: category, color, material, shape, style. If the image doesn't "
+            "clearly show a retail-relevant object, describe your best guess anyway. Do not invent a "
+            "specific brand or SKU. Return strict JSON with keys: 'expandedQuery' (string, a natural "
+            "search query combining the inferred terms), 'detectedCategory' (string, best-guess "
+            "general category), 'attributes' (array of strings, inferred visual attributes like "
+            "color/material/style)."
+        )
+        result = _llm_vision_chat_json(system_prompt, "What retail product is shown in this image?", image_data_url, max_completion_tokens=300)
+        return {
+            "expandedQuery": str(result.get("expandedQuery") or ""),
+            "detectedCategory": str(result.get("detectedCategory") or ""),
+            "attributes": [str(a) for a in (result.get("attributes") or []) if str(a).strip()],
+        }
+
+    def _rerank_results(query: str, results: list[dict[str, Any]]) -> dict[str, Any]:
+        if not ai_toggles["rerank"] or not _llm_available() or not results:
+            return {"enabled": ai_toggles["rerank"] and _llm_available(), "applied": False, "results": results}
+        top_n = min(llm_rerank_top_n, len(results))
+        candidates = []
+        for index, row in enumerate(results[:top_n]):
+            product = row.get("product") if isinstance(row.get("product"), dict) else {}
+            # Trimmed candidate shape: relevance ranking only needs text/attribute signals
+            # (title/categories/brands/tags). Description, availability, and price are dropped --
+            # they roughly doubled prompt size in profiling with no measurable relevance benefit,
+            # since availability/price are already applied by the merchandising stage before this
+            # AI step ever runs. Title is truncated defensively in case of unusually long titles.
+            candidates.append(
+                {
+                    "index": index,
+                    "id": str(row.get("id") or product.get("id") or ""),
+                    "title": str(row.get("title") or product.get("title") or "")[:80],
+                    "categories": product.get("categories") if isinstance(product.get("categories"), list) else [],
+                    "brands": product.get("brands") if isinstance(product.get("brands"), list) else [],
+                    "tags": product.get("tags") if isinstance(product.get("tags"), list) else [],
+                }
+            )
+        system_prompt = (
+            "You rerank retail candidates for user relevance. "
+            "Return strict JSON with keys: rerankedIndexes (array of integers, unique, subset/permutation of "
+            "provided indexes), rationale (string, max 15 words)."
+        )
+        result = _llm_chat_json(system_prompt, {"query": query, "candidates": candidates})
+        reranked = result.get("rerankedIndexes")
+        if not isinstance(reranked, list):
+            raise ValueError("rerankedIndexes missing")
+        ordered_indexes: list[int] = []
+        seen: set[int] = set()
+        for item in reranked:
+            if isinstance(item, int) and 0 <= item < top_n and item not in seen:
+                seen.add(item)
+                ordered_indexes.append(item)
+        for i in range(top_n):
+            if i not in seen:
+                ordered_indexes.append(i)
+        reranked_rows = [results[i] for i in ordered_indexes] + results[top_n:]
+        return {
+            "enabled": True,
+            "applied": True,
+            "results": reranked_rows,
+            "topN": top_n,
+            "rationale": str(result.get("rationale") or ""),
+        }
+
+    def _enrich_products_batch(batch: list[dict[str, Any]]) -> dict[str, dict[str, list[str]]]:
+        # One LLM call enriches a whole batch of products at once (id -> keywords + inferred
+        # features), not one call per product, to keep ingest-time cost/latency proportional to
+        # catalog_size / batch_size rather than catalog_size.
+        candidates = [
+            {
+                "id": str(product.get("id") or ""),
+                "title": str(product.get("title") or "")[:120],
+                "description": str(product.get("description") or "")[:200],
+                "categories": product.get("categories") if isinstance(product.get("categories"), list) else [],
+                "brands": product.get("brands") if isinstance(product.get("brands"), list) else [],
+            }
+            for product in batch
+        ]
+        system_prompt = (
+            "You enrich retail product catalog entries for search recall and completeness. For each product, "
+            "return two things: (1) 'keywords': 5-10 additional search terms a shopper might type that do NOT "
+            "already appear in the title/description -- synonyms, use-cases, occasions, seasons, audience/gift "
+            "framing; (2) 'inferredFeatures': 2-5 features that are STANDARD/TYPICAL for this general category "
+            "of product and commonly expected by shoppers, but missing from the given description (e.g. hiking "
+            "boots are typically waterproof and have ankle support; winter jackets are typically insulated and "
+            "wind-resistant). Only include features that are genuinely standard for that category -- do not "
+            "invent specific unverifiable claims (exact ratings, certifications, materials) that aren't a safe "
+            "general assumption for the category. Return strict JSON with key 'enrichments': array of "
+            "{id (string), keywords (array of strings), inferredFeatures (array of strings)}, one entry per "
+            "product id given, same order not required."
+        )
+        result = _llm_chat_json(
+            system_prompt,
+            {"products": candidates},
+            max_completion_tokens=llm_enrich_max_completion_tokens,
+            timeout_seconds=llm_enrich_timeout_seconds,
+        )
+        rows = result.get("enrichments")
+        by_id: dict[str, dict[str, list[str]]] = {}
+        if isinstance(rows, list):
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                product_id = str(row.get("id") or "").strip()
+                if not product_id:
+                    continue
+                keywords = row.get("keywords")
+                features = row.get("inferredFeatures")
+                by_id[product_id] = {
+                    "keywords": [str(k).strip() for k in keywords if str(k).strip()] if isinstance(keywords, list) else [],
+                    "inferredFeatures": [str(f).strip() for f in features if str(f).strip()] if isinstance(features, list) else [],
+                }
+        return by_id
+
+    # Marker prepended to the appended features sentence so re-running enrichment on an
+    # already-enriched catalog (e.g. re-ingest without a real catalog change) doesn't keep
+    # stacking duplicate "Typically includes: ..." sentences onto the description every time.
+    _ENRICHED_FEATURES_MARKER = "Typically includes:"
+
+    async def _enrich_catalog_with_llm(products: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        # Ingestion-time semantic enrichment: instead of asking an LLM to reason about relevance
+        # fresh on every single query (the rerank/intent path above), spend a bounded, one-time
+        # LLM cost per product AT INGEST -- when the catalog changes, not when queries arrive --
+        # to widen the vocabulary/synonyms baked into both the lexical (BM25) postings and the
+        # vector embeddings, AND to fill in category-typical features shoppers expect but the raw
+        # description never states (e.g. "waterproof" for hiking boots). This scales with catalog
+        # size, not query volume, and a catalog changes far less often than searches happen, so the
+        # amortized per-query cost trends to zero as traffic grows (the opposite of the rerank/
+        # intent cost curve).
+        if not ai_toggles["enrich"] or not _llm_available() or not products:
+            return products, {"enabled": ai_toggles["enrich"] and _llm_available(), "applied": False}
+
+        # Delta ingestion: a product whose indexable fields are byte-for-byte identical to what
+        # was enriched last time (same content hash) reuses its cached tags/description instead of
+        # paying for another LLM call. Adding one new product to a 10,000-SKU catalog re-enriches
+        # exactly one product, not 10,000.
+        #
+        # Matched against BOTH the hash of the ORIGINAL pre-enrichment source we last saw
+        # (sourceHash) and the hash of what we last OUTPUT after enriching it (outputHash).
+        # Without the outputHash check, re-ingesting the currently-served (already-enriched)
+        # catalog back into this same endpoint -- a very plausible "refresh" operation, and
+        # exactly what querying /search/query and re-posting its results does -- would never hit
+        # the cache: the incoming content would be our own previous OUTPUT, which never matches
+        # the ORIGINAL pre-enrichment sourceHash we cached, causing every product to look "new"
+        # forever even though nothing upstream actually changed.
+        to_enrich: list[dict[str, Any]] = []
+        reused_count = 0
+        for product in products:
+            product_id = str(product.get("id") or "")
+            incoming_hash = _content_hash(product)
+            cached = enrichment_cache.get(product_id) if product_id else None
+            if cached and incoming_hash in (cached.get("sourceHash"), cached.get("outputHash")):
+                if cached.get("tags"):
+                    product["tags"] = cached["tags"]
+                if cached.get("description"):
+                    product["description"] = cached["description"]
+                reused_count += 1
+            else:
+                to_enrich.append(product)
+
+        if not to_enrich:
+            return products, {
+                "enabled": True,
+                "applied": False,
+                "reason": "all products unchanged since last enrichment",
+                "reusedFromCache": reused_count,
+            }
+
+        batches = [to_enrich[i : i + llm_enrich_batch_size] for i in range(0, len(to_enrich), llm_enrich_batch_size)]
+        semaphore = asyncio.Semaphore(llm_enrich_max_concurrency)
+
+        async def _run_batch(batch: list[dict[str, Any]]) -> tuple[dict[str, dict[str, list[str]]], str | None]:
+            async with semaphore:
+                try:
+                    return await asyncio.to_thread(_enrich_products_batch, batch), None
+                except Exception as exc:
+                    return {}, str(exc)
+
+        batch_results = await asyncio.gather(*[_run_batch(batch) for batch in batches])
+        enrichment_by_id: dict[str, dict[str, list[str]]] = {}
+        batch_errors: list[str] = []
+        for batch_result, batch_error in batch_results:
+            enrichment_by_id.update(batch_result)
+            if batch_error:
+                batch_errors.append(batch_error)
+        enriched_count = 0
+        features_added_count = 0
+        for product in to_enrich:
+            product_id = str(product.get("id") or "")
+            source_hash = _content_hash(product)
+            enrichment = enrichment_by_id.get(product_id)
+            if not enrichment:
+                continue
+            extra_keywords = enrichment.get("keywords") or []
+            if extra_keywords:
+                existing_tags = product.get("tags") if isinstance(product.get("tags"), list) else []
+                existing_lower = {str(t).strip().lower() for t in existing_tags}
+                merged = list(existing_tags)
+                for keyword in extra_keywords:
+                    if keyword.lower() not in existing_lower:
+                        merged.append(keyword)
+                        existing_lower.add(keyword.lower())
+                product["tags"] = merged
+            inferred_features = enrichment.get("inferredFeatures") or []
+            description = str(product.get("description") or "")
+            if inferred_features and _ENRICHED_FEATURES_MARKER not in description:
+                # Appended as a clearly-labeled "typically includes" sentence rather than folded
+                # into the description as bare fact -- these are category-typical inferences, not
+                # verified attributes of this specific SKU, so they shouldn't read as an
+                # unqualified product claim (real compliance/accuracy risk if they did).
+                suffix = f" {_ENRICHED_FEATURES_MARKER} {', '.join(inferred_features)}."
+                product["description"] = (description + suffix).strip()
+                features_added_count += 1
+            if extra_keywords or inferred_features:
+                enriched_count += 1
+            if product_id:
+                # Cache both the ORIGINAL (pre-enrichment) source hash and the resulting OUTPUT
+                # hash -- see the comment above on why outputHash matters (re-ingesting our own
+                # previously-enriched output must also be recognized as "unchanged").
+                enrichment_cache[product_id] = {
+                    "sourceHash": source_hash,
+                    "outputHash": _content_hash(product),
+                    "tags": product.get("tags") if isinstance(product.get("tags"), list) else [],
+                    "description": str(product.get("description") or ""),
+                }
+        # Drop cache entries for products no longer in the catalog so the persisted cache doesn't
+        # grow unboundedly as products are removed/replaced across many ingest cycles.
+        current_ids = {str(p.get("id") or "") for p in products}
+        for stale_id in list(enrichment_cache.keys()):
+            if stale_id not in current_ids:
+                enrichment_cache.pop(stale_id, None)
+        _save_json_blob(ENRICHMENT_CACHE_BLOB, enrichment_cache)
+        result_meta = {
+            "enabled": True,
+            "applied": True,
+            "productsEnriched": enriched_count,
+            "descriptionsAugmented": features_added_count,
+            "reusedFromCache": reused_count,
+            "batches": len(batches),
+        }
+        if batch_errors:
+            result_meta["batchErrors"] = batch_errors[:5]
+            result_meta["batchErrorCount"] = len(batch_errors)
+        return products, result_meta
 
     def search_context(
         authorization: Annotated[str | None, Header()] = None,
@@ -55,38 +1600,388 @@ def create_app(service: RetailV2Service | None = None) -> FastAPI:
     ) -> TenantContext:
         return context_from_auth("wavesearch-api", authorization=authorization, x_tenant_id=x_tenant_id, require_tenant_header=True)
 
+    def public_search_context(
+        authorization: Annotated[str | None, Header()] = None,
+        x_tenant_id: Annotated[str | None, Header()] = None,
+    ) -> TenantContext:
+        # Read-only, side-effect-free search surfaces (query/recommend/offers/events) are public:
+        # any shopper on the storefront can hit these with no login, so there's no reason to force
+        # a signed-JWT round-trip through STS just to read the catalog or log a click/view.
+        # events.write is included in the anonymous scope set since clickstream telemetry (the
+        # signal personalization is built from) has to come from anonymous shoppers, not just
+        # logged-in ones -- gating it behind auth would mean personalization only ever works for
+        # authenticated accounts. If a caller *does* present a valid bearer token (e.g. an
+        # authenticated internal service), honor its real tenant/scopes; otherwise fall back to an
+        # anonymous public context.
+        if authorization and authorization.lower().startswith("bearer "):
+            try:
+                return context_from_auth("wavesearch-api", authorization=authorization, x_tenant_id=x_tenant_id, require_tenant_header=False)
+            except HTTPException:
+                pass
+        tenant = (x_tenant_id or "demo-tenant").strip() or "demo-tenant"
+        return TenantContext(tenant_id=tenant, scopes=frozenset({"search.query", "events.write"}))
+
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "service": "wavesearch-api"}
 
+    async def _run_search_pipeline(
+        context: TenantContext,
+        query: str,
+        page_size: int,
+        offset: int,
+        sort_spec: list[dict[str, Any]],
+        filters: dict[str, Any],
+        visitor_id: str,
+    ) -> dict[str, Any]:
+        # Shared search pipeline: lexical/hybrid retrieval -> AI rerank/intent -> personalization
+        # -> merchandising -> sort -> facets -> diagnostics. Extracted so /search/query and
+        # /search/visual (LLM-expanded visual/descriptive queries) both run the exact same
+        # ranking pipeline instead of maintaining two copies of it.
+        window_size = offset + page_size
+
+        redirect_row = _tenant_redirects(context.tenant_id).get(_normalize_redirect_query(query))
+        redirect_meta = {"matched": True, **redirect_row} if redirect_row else {"matched": False}
+
+        lexical_query, spell_correction = _correct_query_for_lexical_search(query)
+        vector_active = ai_toggles["vector"] and _embeddings_available() and bool(vector_ids)
+        # When hybrid search is active, pull a larger lexical candidate pool than the requested
+        # window so RRF fusion has a meaningful BM25 ranking to fuse against (fusing against a
+        # pool already truncated to the window would make the lexical side nearly worthless).
+        lexical_pool_size = max(window_size, vector_top_k) * 3 if vector_active else window_size
+        response = service.search(lexical_query, lexical_pool_size, filters)
+        if vector_active:
+            # Vector retrieval deliberately uses the original raw query text, not the
+            # lexically-corrected one -- see _correct_query_for_lexical_search for why.
+            response = await asyncio.to_thread(_hybrid_fuse, query, response, filters, window_size)
+        else:
+            response["results"] = list(response.get("results") or [])[:window_size]
+            response.setdefault("hybrid", {"enabled": ai_toggles["vector"], "applied": False})
+        response["spellCorrection"] = spell_correction or {"applied": False}
+        response["redirect"] = redirect_meta
+        pre_results = list(response.get("results") or [])
+        ai_active = _llm_available() and (ai_toggles["rerank"] or ai_toggles["intent"])
+        ai_meta: dict[str, Any] = {"enabled": _llm_available(), "rerank": {"applied": False}, "intent": {"applied": False}}
+        if ai_active and isinstance(response.get("results"), list) and response.get("results"):
+            # Run rerank + intent classification concurrently (independent LLM calls) instead of
+            # sequentially, roughly halving worst-case AI-enabled latency per query. Either can be
+            # individually disabled via the runtime AI toggles without touching the other.
+            rerank_task = asyncio.to_thread(_rerank_results, query, list(response["results"]))
+            intent_task = asyncio.to_thread(_classify_query_intent, query, filters)
+            rerank_result, intent_result = await asyncio.gather(rerank_task, intent_task, return_exceptions=True)
+            if isinstance(rerank_result, Exception):
+                ai_meta["rerank"] = {"enabled": ai_toggles["rerank"], "applied": False, "error": str(rerank_result)}
+            else:
+                response["results"] = rerank_result.get("results", response["results"])
+                ai_meta["rerank"] = {
+                    "enabled": rerank_result.get("enabled", False),
+                    "applied": rerank_result.get("applied", False),
+                    "topN": rerank_result.get("topN"),
+                    "rationale": rerank_result.get("rationale", ""),
+                }
+            if isinstance(intent_result, Exception):
+                ai_meta["intent"] = {"enabled": ai_toggles["intent"], "applied": False, "error": str(intent_result)}
+            else:
+                ai_meta["intent"] = intent_result
+        response["ai"] = ai_meta
+        objective_results, objective_meta = _apply_ranking_objective(context.tenant_id, list(response.get("results") or []), visitor_id)
+        response["rankingObjective"] = objective_meta
+        personalized_results, personalization_meta = _personalize(context.tenant_id, visitor_id, objective_results)
+        response["personalization"] = personalization_meta
+        merchandised_results, merchandising_meta = _apply_merchandising(context.tenant_id, personalized_results)
+        if sort_spec:
+            # Pinned products still float to the top under an explicit sort (a merchandising
+            # decision like "always show this SKU first" should survive a shopper picking "Sort by
+            # price"), but boost/bury/relevance ordering for the rest is superseded by the
+            # requested field(s) -- that's what choosing an explicit sort order means.
+            pinned_count = merchandising_meta.get("pinned", 0)
+            pinned_rows, rest_rows = merchandised_results[:pinned_count], merchandised_results[pinned_count:]
+            merchandised_results = pinned_rows + _apply_sort(rest_rows, sort_spec)
+        response["sort"] = {"applied": bool(sort_spec), "fields": sort_spec}
+        response["facets"] = _filter_trivial_facets({**(response.get("facets") or {}), **_compute_dynamic_facets(merchandised_results)})
+        response["results"] = merchandised_results[offset : offset + page_size]
+        response["merchandising"] = merchandising_meta
+        response["pageSize"] = page_size
+        response["offset"] = offset
+        post_results = list(response.get("results") or [])
+        diagnostic_id = _record_diagnostic(context, query, filters, page_size, response, pre_results, post_results, ai_meta)
+        response["diagnosticId"] = diagnostic_id
+        return response
+
     @app.post("/search/query")
-    async def search_query(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+    async def search_query(payload: dict[str, Any], context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
         require_scope(context, "search.query")
-        return service.search(str(payload.get("query") or ""), int(payload.get("pageSize") or 10))
+        query = str(payload.get("query") or "")
+        page_size = int(payload.get("pageSize") or 10)
+        offset = max(0, int(payload.get("offset") or 0))
+        sort_spec = _parse_sort_spec(payload.get("sort"))
+        filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else {}
+        visitor_id = str(payload.get("visitorId") or "").strip()
+        return await _run_search_pipeline(context, query, page_size, offset, sort_spec, filters, visitor_id)
+
+    @app.post("/search/visual")
+    async def search_visual(payload: dict[str, Any], context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
+        require_scope(context, "search.query")
+        description = str(payload.get("description") or payload.get("query") or "").strip()
+        image_base64 = str(payload.get("imageBase64") or "").strip()
+        image_mime_type = str(payload.get("imageMimeType") or "image/jpeg").strip()
+        image_data_url = str(payload.get("imageDataUrl") or "").strip()
+        if image_base64 and not image_data_url:
+            image_data_url = f"data:{image_mime_type};base64,{image_base64}"
+        if not description and not image_data_url:
+            raise HTTPException(status_code=400, detail="description or an image (imageBase64/imageDataUrl) is required")
+        # Defensive size guard against oversized uploads (base64 inflates size ~33%; ~10MB decoded
+        # is already generous for a product photo).
+        if image_data_url and len(image_data_url) > 14_000_000:
+            raise HTTPException(status_code=413, detail="image payload too large")
+        page_size = int(payload.get("pageSize") or 10)
+        offset = max(0, int(payload.get("offset") or 0))
+        sort_spec = _parse_sort_spec(payload.get("sort"))
+        filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else {}
+        visitor_id = str(payload.get("visitorId") or "").strip()
+
+        if not _llm_available():
+            effective_query = description
+            visual_meta: dict[str, Any] = {
+                "enabled": False,
+                "applied": False,
+                "reason": "LLM endpoint is not configured",
+                "source": "image" if image_data_url else "text",
+                "originalDescription": description,
+            }
+        else:
+            try:
+                if image_data_url:
+                    expansion = await asyncio.to_thread(_analyze_uploaded_image, image_data_url)
+                    source = "image"
+                else:
+                    expansion = await asyncio.to_thread(_expand_visual_query, description)
+                    source = "text"
+                effective_query = expansion["expandedQuery"] or description
+                visual_meta = {"enabled": True, "applied": True, "source": source, "originalDescription": description, **expansion}
+            except Exception as exc:
+                effective_query = description
+                visual_meta = {
+                    "enabled": True,
+                    "applied": False,
+                    "source": "image" if image_data_url else "text",
+                    "originalDescription": description,
+                    "error": str(exc),
+                }
+
+        response = await _run_search_pipeline(context, effective_query, page_size, offset, sort_spec, filters, visitor_id)
+        response["visualSearch"] = visual_meta
+        return response
+
+    @app.post("/search/browse")
+    async def search_browse(payload: dict[str, Any], context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
+        require_scope(context, "search.query")
+        # Browse is category/collection navigation, not a text query -- Vertex AI Search for
+        # Retail's browse surfaces reuse the same filtering/faceting/boosting apparatus as search
+        # but rank for revenue/inventory rather than lexical relevance, since there's no query
+        # text to score against. This mirrors that: same filters/sort/facets/merchandising
+        # pipeline as /search/query, minus lexical retrieval, minus rerank/intent/vector (nothing
+        # here for an LLM or embedding to usefully rerank without a query).
+        page_size = int(payload.get("pageSize") or 20)
+        offset = max(0, int(payload.get("offset") or 0))
+        sort_spec = _parse_sort_spec(payload.get("sort"))
+        filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else {}
+        visitor_id = str(payload.get("visitorId") or "").strip()
+        # Pull a generously large candidate pool (not just the requested page) so facet counts
+        # reflect the true matching set, same principle as the hybrid-search pool sizing in
+        # /search/query.
+        pool_size = max(offset + page_size, 200)
+        response = service.search("", pool_size, filters)
+        results = list(response.get("results") or [])
+        if not sort_spec:
+            # No explicit sort requested: default browse ordering is in-stock-first (a reasonable,
+            # honest proxy for "revenue-optimized" ordering given this demo has no real sales/
+            # margin data to rank by), then stable catalog order as the tiebreaker.
+            results.sort(key=lambda row: 0 if _sort_key_value(row, "availability") == "in_stock" else 1)
+        objective_results, objective_meta = _apply_ranking_objective(context.tenant_id, results, visitor_id)
+        personalized_results, personalization_meta = _personalize(context.tenant_id, visitor_id, objective_results)
+        merchandised_results, merchandising_meta = _apply_merchandising(context.tenant_id, personalized_results)
+        if sort_spec:
+            pinned_count = merchandising_meta.get("pinned", 0)
+            pinned_rows, rest_rows = merchandised_results[:pinned_count], merchandised_results[pinned_count:]
+            merchandised_results = pinned_rows + _apply_sort(rest_rows, sort_spec)
+        facets = _filter_trivial_facets({**(response.get("facets") or {}), **_compute_dynamic_facets(merchandised_results)})
+        return {
+            "results": merchandised_results[offset : offset + page_size],
+            "totalSize": len(merchandised_results),
+            "facets": facets,
+            "appliedFilters": filters,
+            "sort": {"applied": bool(sort_spec), "fields": sort_spec},
+            "rankingObjective": objective_meta,
+            "personalization": personalization_meta,
+            "merchandising": merchandising_meta,
+            "pageSize": page_size,
+            "offset": offset,
+        }
 
     @app.post("/search/recommend")
-    async def search_recommend(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+    async def search_recommend(payload: dict[str, Any], context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
         require_scope(context, "search.query")
-        return service.recommend(payload.get("productId"), int(payload.get("pageSize") or 10))
+        visitor_id = str(payload.get("visitorId") or "").strip()
+        result = service.recommend(payload.get("productId"), int(payload.get("pageSize") or 10))
+        objective_results, objective_meta = _apply_ranking_objective(context.tenant_id, list(result.get("results") or []), visitor_id)
+        result["rankingObjective"] = objective_meta
+        personalized_results, personalization_meta = _personalize(context.tenant_id, visitor_id, objective_results)
+        result["personalization"] = personalization_meta
+        merchandised_results, merchandising_meta = _apply_merchandising(context.tenant_id, personalized_results)
+        result["results"] = merchandised_results
+        result["merchandising"] = merchandising_meta
+        return result
 
     @app.post("/search/events")
     async def search_events(
         payload: dict[str, Any],
-        context: TenantContext = Depends(search_context),
+        context: TenantContext = Depends(public_search_context),
         x_retail_partition_key: Annotated[str | None, Header(alias="X-Retail-Partition-Key")] = None,
     ) -> dict[str, Any]:
         require_scope(context, "events.write")
-        return service.append_event(context, payload, x_retail_partition_key)
+        return _append_event(context, payload, x_retail_partition_key)
 
     @app.get("/search/admin/analytics")
     async def admin_analytics(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
         require_scope(context, "search.admin")
-        return service.analytics_summary(context)
+        return _analytics_payload(context)
+
+    @app.get("/search/admin/ranking-objective")
+    async def admin_get_ranking_objective(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        return {"objective": _tenant_ranking_objective(context.tenant_id), "available": sorted(_VALID_RANKING_OBJECTIVES)}
+
+    @app.post("/search/admin/ranking-objective")
+    async def admin_set_ranking_objective(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        objective = str(payload.get("objective") or "").strip().lower()
+        if objective not in _VALID_RANKING_OBJECTIVES:
+            raise HTTPException(status_code=400, detail=f"objective must be one of {sorted(_VALID_RANKING_OBJECTIVES)}")
+        ranking_objective_by_tenant[context.tenant_id] = objective
+        _save_json_blob(RANKING_OBJECTIVE_BLOB, ranking_objective_by_tenant)
+        return {"accepted": True, "objective": objective}
+
+    @app.get("/search/admin/product-performance")
+    async def admin_product_performance(limit: int = 20, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        # Transparency view backing the ranking objective toggle -- shows the exact numbers
+        # (views/clicks/purchases/revenue/derived CTR/conversion) any objective is computed from,
+        # so an operator can see why the objective toggle changed ranking the way it did.
+        perf = _tenant_product_performance(context.tenant_id)
+        rows = []
+        for product_id, stats in perf.items():
+            product = service.runtime.products_by_id.get(product_id)
+            views = stats.get("views", 0.0)
+            rows.append(
+                {
+                    "productId": product_id,
+                    "title": product.title if product else product_id,
+                    "views": stats.get("views", 0.0),
+                    "clicks": stats.get("clicks", 0.0),
+                    "purchases": stats.get("purchases", 0.0),
+                    "revenue": round(stats.get("revenue", 0.0), 2),
+                    "ctr": round(stats.get("clicks", 0.0) / max(1.0, views), 4),
+                    "conversionRate": round(stats.get("purchases", 0.0) / max(1.0, views), 4),
+                }
+            )
+        rows.sort(key=lambda r: -r["views"])
+        return {"objective": _tenant_ranking_objective(context.tenant_id), "products": rows[: max(1, limit)]}
+
+    @app.get("/search/admin/ml-model")
+    async def admin_ml_model(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        # Transparency view for the real, continuously-retraining ML model backing the ctr/
+        # conversion/revenue objectives -- shows exactly how much it has learned from and whether
+        # it's currently trusted (ready) to supersede the heuristic ratio score for this tenant.
+        stats = ml_ranker_registry.stats(context.tenant_id)
+        return {
+            "minEventsForMl": MIN_EVENTS_FOR_ML,
+            "objectives": {
+                objective: {**model_stats, "ready": model_stats.get("eventsTrained", 0) >= MIN_EVENTS_FOR_ML}
+                for objective, model_stats in stats.items()
+            },
+        }
+
+    @app.post("/search/admin/ml-model/reset")
+    async def admin_ml_model_reset(payload: dict[str, Any] | None = None, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        objective = str((payload or {}).get("objective") or "").strip().lower() or None
+        if objective and objective not in MLRankerRegistry.OBJECTIVES:
+            raise HTTPException(status_code=400, detail=f"objective must be one of {list(MLRankerRegistry.OBJECTIVES)}")
+        ml_ranker_registry.reset(context.tenant_id, objective)
+        _save_json_blob(ML_RANKER_BLOB, ml_ranker_registry.snapshot())
+        return {"reset": True, "objective": objective or "all"}
 
     @app.get("/search/admin/config")
     async def admin_config(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
         require_scope(context, "search.admin")
-        return service.get_admin_config(context)
+        return _admin_config_payload(context)
+
+    @app.post("/search/admin/ai-toggle")
+    async def admin_ai_toggle(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        if "rerankEnabled" in payload:
+            ai_toggles["rerank"] = bool(payload.get("rerankEnabled"))
+        if "intentEnabled" in payload:
+            ai_toggles["intent"] = bool(payload.get("intentEnabled"))
+        if "enrichEnabled" in payload:
+            ai_toggles["enrich"] = bool(payload.get("enrichEnabled"))
+        vector_just_enabled = False
+        if "vectorEnabled" in payload:
+            new_value = bool(payload.get("vectorEnabled"))
+            vector_just_enabled = new_value and not ai_toggles["vector"]
+            ai_toggles["vector"] = new_value
+        vector_index_error: str | None = None
+        # Build the vector index on-demand the moment the toggle flips on, if it isn't already
+        # populated (e.g. operator enables hybrid search without having re-ingested the catalog
+        # since startup) -- avoids a confusing "vector enabled but 0 results" state.
+        if vector_just_enabled and _embeddings_available() and not vector_ids:
+            try:
+                await asyncio.to_thread(_build_vector_index)
+            except Exception as exc:
+                vector_index_error = str(exc)
+        result = {
+            "accepted": True,
+            "available": _llm_available(),
+            "rerankEnabled": ai_toggles["rerank"],
+            "intentEnabled": ai_toggles["intent"],
+            "enrichEnabled": ai_toggles["enrich"],
+            "vectorEnabled": ai_toggles["vector"],
+            "vectorAvailable": _embeddings_available(),
+            "vectorIndexSize": len(vector_ids),
+        }
+        if vector_index_error:
+            result["vectorIndexError"] = vector_index_error
+        return result
+
+    @app.post("/search/admin/vector-index/rebuild")
+    async def admin_vector_index_rebuild(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        if not _embeddings_available():
+            raise HTTPException(status_code=400, detail="embedding endpoint is not configured")
+        try:
+            stats = await asyncio.to_thread(_build_vector_index)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"vector index rebuild failed: {exc}") from exc
+        return {"accepted": True, "vectorIndexSize": stats["total"], "vectorEmbedded": stats["embedded"], "vectorReusedFromCache": stats["reused"]}
+
+    @app.get("/search/admin/diagnostics")
+    async def list_diagnostics(limit: int = 20, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        items = list(_tenant_diagnostics(context.tenant_id))
+        items.reverse()
+        capped_limit = max(1, min(int(limit or 20), 100))
+        limited = items[:capped_limit]
+        return {"diagnostics": [_diagnostic_summary(item) for item in limited], "total": len(items)}
+
+    @app.get("/search/admin/diagnostics/{diagnostic_id}")
+    async def get_diagnostic(diagnostic_id: str, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        for item in _tenant_diagnostics(context.tenant_id):
+            if item.get("id") == diagnostic_id:
+                return {"diagnostic": item}
+        raise HTTPException(status_code=404, detail="diagnostic not found")
 
     @app.post("/search/admin/rules")
     async def admin_rules(
@@ -95,7 +1990,19 @@ def create_app(service: RetailV2Service | None = None) -> FastAPI:
         x_retail_partition_key: Annotated[str | None, Header(alias="X-Retail-Partition-Key")] = None,
     ) -> dict[str, Any]:
         require_scope(context, "search.admin")
-        return service.append_rule(context, payload, x_retail_partition_key)
+        rule_id = str(payload.get("id") or "").strip()
+        if not rule_id:
+            raise HTTPException(status_code=400, detail="id is required")
+        return _append_rule(context, payload, x_retail_partition_key)
+
+    @app.delete("/search/admin/rules/{rule_id}")
+    async def admin_delete_rule(rule_id: str, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        removed = _tenant_rules(context.tenant_id).pop(rule_id, None)
+        if removed is None:
+            raise HTTPException(status_code=404, detail="rule not found")
+        _save_json_blob(RULES_BLOB, rules_by_tenant)
+        return {"accepted": True, "removed": removed}
 
     @app.post("/search/ingest/catalog")
     async def ingest_catalog(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
@@ -103,9 +2010,61 @@ def create_app(service: RetailV2Service | None = None) -> FastAPI:
         products = payload.get("products") if isinstance(payload.get("products"), list) else []
         if not products:
             raise HTTPException(status_code=400, detail="products[] is required")
+        products, enrich_meta = await _enrich_catalog_with_llm(products)
         snapshot = _write_catalog_snapshot(products)
-        result = service.rebuild_runtime({"catalogPath": str(snapshot)})
+        result = _rebuild_runtime_from_snapshot(snapshot, len(products), products)
+        result["enrichment"] = enrich_meta
         return {"accepted": "error" not in result, **result}
+
+    @app.post("/search/ingest/promotions")
+    async def ingest_promotions(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.ingest")
+        promotions = payload.get("promotions") if isinstance(payload.get("promotions"), list) else []
+        indexed_count = _index_promotions(context.tenant_id, promotions)
+        return {"accepted": True, "promotionsIndexed": indexed_count}
+
+    @app.post("/search/offers")
+    async def search_offers(payload: dict[str, Any], context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
+        require_scope(context, "search.query")
+        query = str(payload.get("query") or "").strip()
+        page_size = max(1, int(payload.get("pageSize") or 10))
+        matches = _search_promotions(context.tenant_id, query)
+        return {"query": query, "totalSize": len(matches), "offers": matches[:page_size]}
+
+    @app.get("/search/autocomplete")
+    async def autocomplete(query: str = "", limit: int = 8, context: TenantContext = Depends(public_search_context)) -> dict[str, Any]:
+        require_scope(context, "search.query")
+        return _autocomplete(query, max(1, min(20, limit)))
+
+    @app.post("/search/admin/redirects")
+    async def admin_upsert_redirect(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        raw_query = str(payload.get("query") or "").strip()
+        url = str(payload.get("url") or "").strip()
+        if not raw_query or not url:
+            raise HTTPException(status_code=400, detail="query and url are required")
+        key = _normalize_redirect_query(raw_query)
+        if not key:
+            raise HTTPException(status_code=400, detail="query must contain at least one searchable term")
+        row = {"query": raw_query, "url": url, "label": str(payload.get("label") or "").strip()}
+        _tenant_redirects(context.tenant_id)[key] = row
+        _save_json_blob(REDIRECTS_BLOB, redirects_by_tenant)
+        return {"accepted": True, "redirect": row}
+
+    @app.get("/search/admin/redirects")
+    async def admin_list_redirects(context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        return {"redirects": list(_tenant_redirects(context.tenant_id).values())}
+
+    @app.delete("/search/admin/redirects/{redirect_query}")
+    async def admin_delete_redirect(redirect_query: str, context: TenantContext = Depends(search_context)) -> dict[str, Any]:
+        require_scope(context, "search.admin")
+        key = _normalize_redirect_query(redirect_query)
+        removed = _tenant_redirects(context.tenant_id).pop(key, None)
+        if removed is None:
+            raise HTTPException(status_code=404, detail="redirect not found")
+        _save_json_blob(REDIRECTS_BLOB, redirects_by_tenant)
+        return {"accepted": True, "removed": removed}
 
     @app.post("/search/ingest/from-erp")
     async def ingest_from_erp(payload: dict[str, Any], context: TenantContext = Depends(search_context)) -> dict[str, Any]:
@@ -117,11 +2076,100 @@ def create_app(service: RetailV2Service | None = None) -> FastAPI:
         if not erp_token:
             raise HTTPException(status_code=400, detail="erpToken is required")
         try:
-            products = _fetch_erp_catalog(erp_catalog_url, context.tenant_id, erp_token)
+            products = await asyncio.to_thread(_fetch_erp_catalog, erp_catalog_url, context.tenant_id, erp_token)
         except Exception as exc:  # surfaced as explicit API error
             raise HTTPException(status_code=400, detail=f"ERP fetch failed: {exc}") from exc
+        products, enrich_meta = await _enrich_catalog_with_llm(products)
         snapshot = _write_catalog_snapshot(products)
-        result = service.rebuild_runtime({"catalogPath": str(snapshot)})
-        return {"accepted": "error" not in result, "ingestedCount": len(products), **result}
+        result = _rebuild_runtime_from_snapshot(snapshot, len(products), products)
+        result["enrichment"] = enrich_meta
+        # Best-effort: also ingest/index promotions from the same ERP instance so "Ingest from ERP"
+        # keeps catalog and promotions in sync in one action. Derived from the catalog export URL
+        # (".../erp/export/catalog" -> ".../erp/offers"); failures here never fail the catalog ingest.
+        promotions_indexed = 0
+        promotions_error: str | None = None
+        if erp_catalog_url.endswith("/erp/export/catalog"):
+            erp_offers_url = erp_catalog_url[: -len("/erp/export/catalog")] + "/erp/offers"
+            try:
+                offers = await asyncio.to_thread(_fetch_erp_offers, erp_offers_url, context.tenant_id, erp_token)
+                promotions_indexed = _index_promotions(context.tenant_id, offers)
+            except Exception as exc:  # non-fatal: catalog ingest still succeeds
+                promotions_error = str(exc)
+        response = {
+            "accepted": "error" not in result,
+            "ingestedCount": len(products),
+            "promotionsIndexed": promotions_indexed,
+            **result,
+        }
+        if promotions_error:
+            response["promotionsError"] = promotions_error
+        return response
+
+    @app.on_event("startup")
+    async def _load_persisted_state_on_startup() -> None:
+        # Restore everything that was persisted to blob storage before this pod (or a prior one)
+        # was torn down: the last-ingested catalog itself (so ERP/ingest-time enrichment survives
+        # a restart, not just the static sample-catalog.json fallback), merchandising rules,
+        # redirects, and promotions -- all previously process-local-only and silently reset to
+        # empty on every restart/redeploy.
+        try:
+            cached_catalog = _load_json_blob(CATALOG_PRODUCTS_BLOB, None)
+            if isinstance(cached_catalog, dict) and isinstance(cached_catalog.get("products"), list) and cached_catalog["products"]:
+                service.runtime = RuntimeBuilder().build(cached_catalog)
+        except Exception:
+            pass
+        try:
+            for tenant_id, rules in _load_json_blob(RULES_BLOB, {}).items():
+                if isinstance(rules, dict):
+                    _tenant_rules(tenant_id).update(rules)
+        except Exception:
+            pass
+        try:
+            for tenant_id, redirects in _load_json_blob(REDIRECTS_BLOB, {}).items():
+                if isinstance(redirects, dict):
+                    _tenant_redirects(tenant_id).update(redirects)
+        except Exception:
+            pass
+        try:
+            for tenant_id, promotions in _load_json_blob(PROMOTIONS_BLOB, {}).items():
+                if isinstance(promotions, dict):
+                    _index_promotions(tenant_id, list(promotions.values()), persist=False)
+        except Exception:
+            pass
+        try:
+            for tenant_id, profiles in _load_json_blob(VISITOR_SIGNALS_BLOB, {}).items():
+                if isinstance(profiles, dict):
+                    _tenant_visitor_signals(tenant_id).update(profiles)
+        except Exception:
+            pass
+        try:
+            for tenant_id, perf in _load_json_blob(PRODUCT_PERFORMANCE_BLOB, {}).items():
+                if isinstance(perf, dict):
+                    _tenant_product_performance(tenant_id).update(perf)
+        except Exception:
+            pass
+        try:
+            for tenant_id, objective in _load_json_blob(RANKING_OBJECTIVE_BLOB, {}).items():
+                if isinstance(objective, str) and objective in _VALID_RANKING_OBJECTIVES:
+                    ranking_objective_by_tenant[tenant_id] = objective
+        except Exception:
+            pass
+        try:
+            ml_ranker_registry.load_snapshot(_load_json_blob(ML_RANKER_BLOB, {}))
+        except Exception:
+            pass
+        # Vector search now defaults ON, but the catalog was already loaded (synchronously, in
+        # create_service(), or just above from the persisted blob) before this app/toggles
+        # existed -- without this, vector_ids would stay empty until the first ingest or a manual
+        # /search/admin/vector-index/rebuild call, silently behaving as if vector search were off
+        # despite the toggle reporting true. _build_vector_index is delta-aware, so if the
+        # persisted vector_cache already matches the current (persisted) catalog, this restores
+        # full vector coverage with zero new embedding calls.
+        if ai_toggles["vector"] and _embeddings_available() and not vector_ids:
+            try:
+                await asyncio.to_thread(_build_vector_index)
+            except Exception:
+                pass
+        _rebuild_autocomplete_vocabulary()
 
     return app

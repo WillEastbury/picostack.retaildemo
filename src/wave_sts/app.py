@@ -10,10 +10,13 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from retail_v2.models import TenantContext
 from wave_shared.auth import context_from_auth, issuer_for_audience, require_scope
+
+STS_UI_HTML = Path(__file__).with_name("wave_sts_ui.html")
 
 
 def _is_enabled(value: str | None) -> bool:
@@ -29,6 +32,20 @@ def _scope_policy() -> dict[str, frozenset[str]]:
         "wavestore-erp-frontend": frozenset({"erp.read", "erp.write", "erp.order"}),
         "wavesearch-frontend": frozenset({"search.query", "search.admin", "search.ingest", "events.write", "erp.export"}),
     }
+
+
+def _cors_origins() -> list[str]:
+    configured = os.environ.get("WAVE_CORS_ORIGINS")
+    if configured:
+        return [item.strip() for item in configured.split(",") if item.strip()]
+    return [
+        "http://127.0.0.1:8805",
+        "http://localhost:8805",
+        "http://127.0.0.1:8804",
+        "http://localhost:8804",
+        "http://127.0.0.1:8787",
+        "http://localhost:8787",
+    ]
 
 
 class UserStore:
@@ -54,16 +71,19 @@ class UserStore:
         return base64.b64encode(derived).decode("ascii")
 
     def _bootstrap_defaults(self) -> None:
-        if self.users:
-            return
         default_password = os.environ.get("WAVE_STS_DEMO_PASSWORD", "demo123!")
         admin_user = os.environ.get("WAVE_STS_ADMIN_USER", "admin")
         admin_password = os.environ.get("WAVE_STS_ADMIN_PASSWORD", default_password)
         audience_defaults = ["wave-sts", "wavesearch-api", "wavestore-erp-api", "wavestore-frontend", "wavestore-erp-frontend", "wavesearch-frontend"]
-        self.create_user(admin_user, admin_password, audience_defaults, ["sts.issue", "sts.validate", "sts.admin"], is_admin=True)
-        self.create_user("wave.user", default_password, ["wavesearch-api", "wavestore-erp-api", "wavestore-frontend"], ["search.query", "events.write", "erp.read", "erp.order"])
-        self.create_user("erp.admin", default_password, ["wavestore-erp-api", "wavestore-erp-frontend"], ["erp.read", "erp.write", "erp.order", "erp.export"])
-        self.create_user("search.admin", default_password, ["wavesearch-api", "wavesearch-frontend", "wavestore-erp-api"], ["search.query", "search.admin", "search.ingest", "events.write", "erp.export"])
+        self.ensure_user(admin_user, admin_password, audience_defaults, ["sts.issue", "sts.validate", "sts.admin"], is_admin=True)
+        self.ensure_user("sts.admin", default_password, ["wave-sts"], ["sts.issue", "sts.validate", "sts.admin"], is_admin=True)
+        self.ensure_user("wave.user", default_password, ["wavesearch-api", "wavestore-erp-api", "wavestore-frontend"], ["search.query", "events.write", "erp.read", "erp.order"])
+        self.ensure_user("erp.admin", default_password, ["wavestore-erp-api", "wavestore-erp-frontend"], ["erp.read", "erp.write", "erp.order", "erp.export"], is_admin=True)
+        self.ensure_user("search.admin", default_password, ["wavesearch-api", "wavesearch-frontend", "wavestore-erp-api"], ["search.query", "search.admin", "search.ingest", "events.write", "erp.export", "erp.read"], is_admin=True)
+        self.ensure_user("wavestore.admin", default_password, ["wavestore-frontend", "wavestore-erp-api", "wavestore-erp-frontend"], ["search.query", "events.write", "erp.read", "erp.write", "erp.order", "erp.export"], is_admin=True)
+        self.ensure_user("wavesearch.admin", default_password, ["wavesearch-api", "wavesearch-frontend"], ["search.query", "search.admin", "search.ingest", "events.write"], is_admin=True)
+        self.ensure_user("avery.hill", "avery.hill", ["wavestore-frontend", "wavesearch-api"], ["search.query", "events.write", "erp.read", "erp.order"])
+        self.ensure_user("morgan.vale", "morgan.vale", ["wavestore-frontend", "wavesearch-api"], ["search.query", "events.write", "erp.read", "erp.order"])
 
     def create_user(
         self,
@@ -92,6 +112,41 @@ class UserStore:
         self.users[row["username"]] = row
         self._save()
         return row
+
+    def ensure_user(
+        self,
+        username: str,
+        password: str,
+        allowed_audiences: list[str],
+        allowed_scopes: list[str],
+        *,
+        is_admin: bool = False,
+        disabled: bool = False,
+    ) -> dict[str, Any]:
+        existing = self.users.get(username.strip())
+        if not existing:
+            return self.create_user(username, password, allowed_audiences, allowed_scopes, is_admin=is_admin, disabled=disabled)
+        merged = False
+        audience_set = set(existing.get("allowedAudiences") or [])
+        scope_set = set(existing.get("allowedScopes") or [])
+        next_audiences = sorted(audience_set.union({item for item in allowed_audiences if item}))
+        next_scopes = sorted(scope_set.union({item for item in allowed_scopes if item}))
+        if next_audiences != list(existing.get("allowedAudiences") or []):
+            existing["allowedAudiences"] = next_audiences
+            merged = True
+        if next_scopes != list(existing.get("allowedScopes") or []):
+            existing["allowedScopes"] = next_scopes
+            merged = True
+        if is_admin and not bool(existing.get("isAdmin")):
+            existing["isAdmin"] = True
+            merged = True
+        if not disabled and bool(existing.get("disabled")):
+            existing["disabled"] = False
+            merged = True
+        if merged:
+            self.users[existing["username"]] = existing
+            self._save()
+        return existing
 
     def verify_password(self, username: str, password: str) -> dict[str, Any] | None:
         user = self.users.get(username)
@@ -124,6 +179,13 @@ class UserStore:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Wave STS")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     scope_policy = _scope_policy()
     allow_anonymous_admin = _is_enabled(os.environ.get("WAVE_STS_ALLOW_ANONYMOUS_ADMIN"))
     users_path = Path(os.environ.get("WAVE_STS_USERS_PATH") or (Path(tempfile.gettempdir()) / "wave-sts-users.json"))
@@ -159,6 +221,7 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
+        return HTMLResponse(STS_UI_HTML.read_text(encoding="utf-8"))
         html = """<!doctype html>
 <html>
 <head>
@@ -166,21 +229,33 @@ def create_app() -> FastAPI:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wave STS</title>
   <style>
-    :root { --bg:#111; --panel:#1d1d1d; --line:#333; --text:#f5f5f5; --muted:#aaa; --accent:#fd8ea1; }
+    :root {
+      --bg:#f5f1ff;
+      --panel:#ffffff;
+      --line:#d9cfef;
+      --text:#1b1230;
+      --muted:#6a5f85;
+      --accent:#593196;
+      --accent-2:#e06c00;
+      --nav:#2d0f5e;
+      --soft:#f8f4ff;
+    }
     body { margin:0; font-family: "Segoe UI", Aptos, Calibri, sans-serif; background:var(--bg); color:var(--text); }
-    .wrap { max-width:1100px; margin:0 auto; padding:20px; }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+    .wrap { max-width:1150px; margin:0 auto; padding:20px; }
+    .hero { background:linear-gradient(135deg, var(--nav) 0%, var(--accent) 55%, var(--accent-2) 100%); color:#fff; border-radius:14px; padding:16px; margin-bottom:12px; }
+    .hero .muted { color:rgba(255,255,255,.85); }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 6px 24px rgba(45,15,94,0.08); }
     .grid { display:grid; gap:10px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); }
-    input, textarea { width:100%; background:#171717; color:var(--text); border:1px solid #444; border-radius:10px; padding:10px; }
+    input, textarea { width:100%; background:var(--soft); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; }
     textarea { min-height:160px; font-family: Consolas, monospace; }
-    button { border:0; border-radius:10px; padding:10px 12px; background:var(--accent); color:#171717; font-weight:700; cursor:pointer; }
-    pre { background:#0b0b0b; border:1px solid var(--line); border-radius:10px; padding:10px; max-height:340px; overflow:auto; color:var(--muted); }
+    button { border:0; border-radius:10px; padding:10px 12px; background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
+    pre { background:#1a122b; border:1px solid #2d1e4d; border-radius:10px; padding:10px; max-height:340px; overflow:auto; color:#d9cfef; }
     .muted { color: var(--muted); }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="panel">
+  <div class="hero">
     <h2>Wave STS - User/Password + Token Admin</h2>
     <p class="muted">Manage demo users and issue/validate scoped tokens for retail + API frontends.</p>
   </div>
@@ -193,10 +268,10 @@ def create_app() -> FastAPI:
   <div class="panel">
     <h3>Login test</h3>
     <div class="grid">
-      <input id="username" value="search.admin" placeholder="Username">
+      <input id="username" value="sts.admin" placeholder="Username">
       <input id="password" value="demo123!" placeholder="Password" type="password">
-      <input id="audience" value="wavesearch-api" placeholder="Audience">
-      <input id="scopes" value="search.query,search.admin,search.ingest,events.write" placeholder="Scopes CSV">
+      <input id="audience" value="wave-sts" placeholder="Audience">
+      <input id="scopes" value="sts.issue,sts.validate,sts.admin" placeholder="Scopes CSV">
     </div>
     <button id="loginBtn">Login + issue token</button>
   </div>
@@ -232,7 +307,9 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
       audience: document.getElementById("audience").value.trim(),
       scopes
     });
-    if (data.access_token) document.getElementById("adminToken").value = data.access_token;
+    if ((document.getElementById("audience").value || "").trim() === "wave-sts" && data.access_token) {
+      document.getElementById("adminToken").value = data.access_token;
+    }
   } catch (e) {}
 });
 document.getElementById("listUsersBtn").addEventListener("click", () => call("/sts/users", "GET", null, true).catch(() => {}));
