@@ -878,16 +878,19 @@
       fillSelect("categoryFilter", [...cats].sort());
       fillSelect("brandFilter", [...brands].sort());
       // Build a two-level category tree from hierarchical "Top > Mid > Leaf" strings so the
-      // navbar can show top-level categories only, with their subcategories revealed in a
-      // second bar underneath once a top-level category is selected (rather than flattening
-      // every full path into one long, repetitive top-level list).
+      // navbar can show top-level categories only, with their IMMEDIATE next-level-down children
+      // revealed in a second bar underneath once a top-level category is selected. Only the
+      // second segment is used as the subcategory label/filter (e.g. "Outdoor > Clothing >
+      // Jackets" contributes a "Clothing" subcategory under "Outdoor", not the full "Clothing >
+      // Jackets" remainder) -- deeper levels beyond that are matched implicitly, since the
+      // category filter does substring containment, not an exact match.
       const tree = new Map();
       for (const cat of cats) {
         const parts = cat.split(">").map(s => s.trim()).filter(Boolean);
         const top = parts[0] || cat;
-        const rest = parts.slice(1).join(" > ");
+        const nextLevel = parts[1];
         if (!tree.has(top)) tree.set(top, new Map());
-        if (rest) tree.get(top).set(rest, cat);
+        if (nextLevel) tree.get(top).set(nextLevel, `${top} > ${nextLevel}`);
       }
       state.categoryTree = tree;
       renderCategoryNav([...tree.keys()].sort());
