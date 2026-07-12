@@ -38,6 +38,11 @@ class ERPState:
     # rather than one flat price per product. See _resolve_pricing_condition for the specificity-
     # based resolution order (most specific match wins, same principle as SAP condition records).
     pricing_conditions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Loyalty points/rewards: one account per customer, keyed by customerId. pointsBalance is
+    # spendable now; lifetimePoints only ever grows and determines tier (so redeeming points
+    # doesn't demote a customer's tier -- matches how real loyalty programs work). history is an
+    # append-only ledger of earn/redeem events for transparency/audit.
+    loyalty_accounts: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class ERPStore:
@@ -481,6 +486,52 @@ def create_app() -> FastAPI:
             "savings": round(base_price - final_price, 2),
         }
 
+    # --- Loyalty points & rewards ---
+    LOYALTY_TIERS = [
+        ("Bronze", 0),
+        ("Silver", 500),
+        ("Gold", 2000),
+        ("Platinum", 5000),
+    ]
+    LOYALTY_EARN_RATE = 1.0  # points earned per 1.0 currency unit spent (order total, post-discount)
+    LOYALTY_REDEMPTION_RATE = 100.0  # points required per 1.0 currency unit of discount
+
+    def _loyalty_tier_for_lifetime(lifetime_points: float) -> str:
+        tier = LOYALTY_TIERS[0][0]
+        for name, threshold in LOYALTY_TIERS:
+            if lifetime_points >= threshold:
+                tier = name
+        return tier
+
+    def _loyalty_account(customer_id: str) -> dict[str, Any]:
+        account = store.state.loyalty_accounts.setdefault(
+            customer_id, {"customerId": customer_id, "pointsBalance": 0.0, "lifetimePoints": 0.0, "tier": LOYALTY_TIERS[0][0], "history": []}
+        )
+        return account
+
+    def _earn_loyalty_points(customer_id: str, order_total: float, order_id: str) -> dict[str, Any]:
+        if not customer_id or customer_id == "guest" or order_total <= 0:
+            return {"earned": 0.0}
+        account = _loyalty_account(customer_id)
+        earned = round(order_total * LOYALTY_EARN_RATE, 2)
+        account["pointsBalance"] = round(account["pointsBalance"] + earned, 2)
+        account["lifetimePoints"] = round(account["lifetimePoints"] + earned, 2)
+        account["tier"] = _loyalty_tier_for_lifetime(account["lifetimePoints"])
+        account["history"].append({"type": "earn", "points": earned, "orderId": order_id, "amount": order_total, "createdAt": __import__("datetime").datetime.utcnow().isoformat() + "Z"})
+        store._save()
+        return {"earned": earned, "account": account}
+
+    def _redeem_loyalty_points(customer_id: str, points: float) -> dict[str, Any]:
+        account = _loyalty_account(customer_id)
+        points = max(0.0, float(points))
+        if points > account["pointsBalance"]:
+            return {"error": f"insufficient points balance: have {account['pointsBalance']}, requested {points}"}
+        discount_amount = round(points / LOYALTY_REDEMPTION_RATE, 2)
+        account["pointsBalance"] = round(account["pointsBalance"] - points, 2)
+        account["history"].append({"type": "redeem", "points": -points, "discountAmount": discount_amount, "createdAt": __import__("datetime").datetime.utcnow().isoformat() + "Z"})
+        store._save()
+        return {"discountAmount": discount_amount, "pointsRedeemed": points, "account": account}
+
     def _normalize_order_items(items: list[Any], customer_id: str | None = None) -> tuple[list[dict[str, Any]], float]:
         # When an explicit item price isn't provided, resolve through the personalized pricing
         # engine (condition records) rather than just the flat catalog price -- so an order
@@ -813,6 +864,34 @@ def create_app() -> FastAPI:
         store._save()
         return {"accepted": True, "deleted": customer_id}
 
+    # --- Loyalty points & rewards ---
+    @app.get("/erp/loyalty/tiers")
+    async def loyalty_tiers(context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        return {
+            "tiers": [{"name": name, "lifetimePointsRequired": threshold} for name, threshold in LOYALTY_TIERS],
+            "earnRate": LOYALTY_EARN_RATE,
+            "redemptionRate": LOYALTY_REDEMPTION_RATE,
+        }
+
+    @app.get("/erp/loyalty/{customer_id}")
+    async def get_loyalty_account(customer_id: str, context=Depends(erp_context)) -> dict[str, Any]:
+        require_scope(context, "erp.read")
+        return {"account": _loyalty_account(customer_id)}
+
+    @app.post("/erp/loyalty/{customer_id}/redeem")
+    async def redeem_loyalty(customer_id: str, payload: dict[str, Any], context=Depends(erp_context)) -> dict[str, Any]:
+        # Standalone preview/redeem call (e.g. a storefront "apply N points" button before
+        # checkout) -- the SAME redemption path place_order uses internally when a checkout
+        # request carries redeemPoints, so a preview here and an actual checkout redemption are
+        # guaranteed to compute discounts identically.
+        require_scope(context, "erp.write")
+        points = float(payload.get("points") or 0)
+        result = _redeem_loyalty_points(customer_id, points)
+        if "error" in result:
+            return result
+        return {"accepted": True, **result}
+
     @app.get("/erp/orders")
     async def list_orders(customerId: str | None = None, context=Depends(erp_context)) -> dict[str, Any]:
         require_scope(context, "erp.read")
@@ -852,6 +931,16 @@ def create_app() -> FastAPI:
             return {"error": "items are required"}
         order_id = f"ord-{uuid4().hex[:10]}"
         normalized_items, total = _normalize_order_items(items, customer_id=customer_id)
+        # Loyalty point redemption: an optional "redeemPoints" on the order request converts
+        # points to a discount off the resolved total BEFORE stock is decremented/invoice raised
+        # -- so the invoiced amount already reflects the reward.
+        redeem_points = float(payload.get("redeemPoints") or 0)
+        loyalty_redemption: dict[str, Any] | None = None
+        if redeem_points > 0:
+            loyalty_redemption = _redeem_loyalty_points(customer_id, redeem_points)
+            if "error" in loyalty_redemption:
+                return {"error": loyalty_redemption["error"]}
+            total = round(max(0.0, total - loyalty_redemption["discountAmount"]), 2)
         for item in normalized_items:
             product_id = str(item.get("productId") or "")
             qty = max(1, int(item.get("quantity") or 1))
@@ -860,12 +949,19 @@ def create_app() -> FastAPI:
                 stock_row["availableQuantity"] = max(0, int(stock_row.get("availableQuantity") or 0) - qty)
                 stock_row["availability"] = "IN_STOCK" if stock_row["availableQuantity"] > 0 else "OUT_OF_STOCK"
         order = {"id": order_id, "customerId": customer_id, "items": normalized_items, "status": "PLACED", "total": total, "currencyCode": "GBP", "createdAt": __import__("datetime").datetime.utcnow().isoformat() + "Z"}
+        if loyalty_redemption:
+            order["loyaltyDiscount"] = loyalty_redemption["discountAmount"]
+            order["loyaltyPointsRedeemed"] = loyalty_redemption["pointsRedeemed"]
         invoice_id = f"inv-{uuid4().hex[:10]}"
         invoice = {"id": invoice_id, "orderId": order_id, "customerId": customer_id, "status": "OPEN", "amount": order["total"], "currencyCode": "GBP", "createdAt": order["createdAt"]}
         store.state.orders[order_id] = order
         store.state.invoices[invoice_id] = invoice
         store._save()
-        return {"accepted": True, "order": order, "invoice": invoice}
+        earn_result = _earn_loyalty_points(customer_id, total, order_id)
+        response = {"accepted": True, "order": order, "invoice": invoice}
+        if earn_result.get("earned"):
+            response["loyaltyEarned"] = earn_result["earned"]
+        return response
 
     @app.get("/erp/orders/{order_id}")
     async def get_order(order_id: str, context=Depends(erp_context)) -> dict[str, Any]:
