@@ -11,7 +11,7 @@ resources:
   - secrets.yaml
   - wave-sts-deployment.yaml
   - wavestore-erp-api-deployment.yaml
-  - wavesearch-api-deployment.yaml
+  - wavesearch-api-statefulset.yaml
   - wavestore-frontend-deployment.yaml
   - wavestore-erp-frontend-deployment.yaml
   - wavesearch-frontend-deployment.yaml

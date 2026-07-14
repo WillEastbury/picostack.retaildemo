@@ -1,3 +1,10 @@
+# SUPERSEDED by wavesearch-api-statefulset.yaml (see
+# docs/wavesearch-api-multi-reader-single-writer.md) -- kept here for
+# reference/rollback only; NOT referenced by kustomization.yaml. The
+# 3 independent-emptyDir replicas this Deployment created had no way to
+# stay consistent with each other (see that doc's "the problem"
+# section) -- the StatefulSet + wavesearch_repl.py replication engine
+# fixes that.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -1,0 +1,170 @@
+# StatefulSet replacing wavesearch-api-deployment.yaml's Deployment --
+# multi-reader/single-writer topology (see
+# docs/wavesearch-api-multi-reader-single-writer.md and
+# src/wavesearch_api/wavesearch_repl.py for the full design, modeled
+# directly on picowal's replication engine: picowal_repl/
+# picowal_repl_client/picowal_gossip).
+#
+# A StatefulSet (not a Deployment) is required here because the gossip
+# leader-election protocol needs STABLE, PREDICTABLE pod identity for
+# its static "registered followers" list (WAVESEARCH_FOLLOWERS) --
+# wavesearch-api-0/1/2 always resolve to the same ordinal via the
+# headless Service's per-pod DNS, unlike a Deployment's randomly-named,
+# freely-rescheduled pods.
+#
+# 3 replicas (not 2): gossip quorum is strictly-more-than-half of the
+# registered followers -- with 3 nodes, quorum=2, so the cluster can
+# still elect a new writer after losing exactly one node. With only 2
+# nodes, quorum=2 as well, meaning losing EITHER node makes quorum
+# permanently unreachable for the survivor alone -- always deploy an
+# odd number >= 3 for this reason (the same reason etcd/ZooKeeper/Raft
+# clusters are always sized 3/5/7, not 2/4/6).
+apiVersion: v1
+kind: Service
+metadata:
+  name: wavesearch-api-headless
+  labels:
+    app: wavesearch-api
+spec:
+  clusterIP: None  # headless -- gives each pod its own stable DNS name (wavesearch-api-N.wavesearch-api-headless)
+  ports:
+    - port: 8803
+      targetPort: 8803
+      protocol: TCP
+      name: http
+  selector:
+    app: wavesearch-api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wavesearch-api
+  labels:
+    app: wavesearch-api
+    component: backend
+spec:
+  serviceName: wavesearch-api-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wavesearch-api
+  template:
+    metadata:
+      labels:
+        app: wavesearch-api
+        component: backend
+    spec:
+      # A tiny init container computes this pod's own stable node id and the
+      # full followers list from its StatefulSet ordinal (available via the
+      # downward API as the pod name, e.g. "wavesearch-api-0") and writes
+      # them to a shared emptyDir file the main container sources as env vars
+      # -- StatefulSet pod names/ordinals aren't otherwise directly
+      # expressible as a single templated env var value in the pod spec.
+      initContainers:
+        - name: repl-identity
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              ORDINAL="${POD_NAME##*-}"
+              echo "WAVESEARCH_NODE_ID=${POD_NAME}.wavesearch-api-headless:8803" > /repl-env/repl.env
+              FOLLOWERS=""
+              for i in 0 1 2; do
+                if [ -n "$FOLLOWERS" ]; then FOLLOWERS="${FOLLOWERS},"; fi
+                FOLLOWERS="${FOLLOWERS}wavesearch-api-${i}.wavesearch-api-headless:8803"
+              done
+              echo "WAVESEARCH_FOLLOWERS=${FOLLOWERS}" >> /repl-env/repl.env
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: repl-env
+              mountPath: /repl-env
+      containers:
+        - name: wavesearch-api
+          image: ghcr.io/willeastbury/wavesearch-labs-retail-search-api:latest
+          imagePullPolicy: Always
+          command:
+            - sh
+            - -c
+            - |
+              set -a
+              . /repl-env/repl.env
+              set +a
+              exec python -m wavesearch_api
+          ports:
+            - containerPort: 8803
+              name: http
+          env:
+            - name: PORT
+              value: "8803"
+            - name: WAVE_STS_URL
+              value: "http://wave-sts:8801"
+            - name: WAVE_STS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: wave-sts-secret
+                  key: secret
+            - name: WAVESTORE_ERP_API_URL
+              value: "http://wavestore-erp-api:8802"
+            - name: WAVESEARCH_WRITE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: wavesearch-repl-secret
+                  key: writeToken
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              memory: "384Mi"
+              cpu: "150m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8803
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8803
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: repl-env
+              mountPath: /repl-env
+            - name: search-index
+              mountPath: /app/index
+      volumes:
+        - name: repl-env
+          emptyDir: {}
+        - name: search-index
+          emptyDir: {}
+---
+# wavesearch-api's own client-facing Service (routes to whichever pods are
+# Ready -- both the writer and replicas serve reads; only the current
+# writer accepts mutating admin/ingest requests, see require_writer in
+# wavesearch_repl.py -- callers hitting a replica for a mutation get a
+# clear 503 not_writer response, not a silent inconsistency).
+apiVersion: v1
+kind: Service
+metadata:
+  name: wavesearch-api
+  labels:
+    app: wavesearch-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8803
+      targetPort: 8803
+      protocol: TCP
+      name: http
+  selector:
+    app: wavesearch-api
