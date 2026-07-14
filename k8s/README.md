@@ -100,8 +100,43 @@ kubectl port-forward -n wave-system svc/wavesearch-frontend 8806:8806 &
 
 ## Container Image Requirements
 
-> **Note (ARM cluster):** build images **in-cluster** for `linux/arm64`.  
-> Local default `docker build` outputs can be `amd64` and will fail on ARM nodes (`exec format error`).
+> **Note (ARM cluster):** the `wave-dev`/`wave-prod` AKS nodes are `arm64` (verify with
+> `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.nodeInfo.architecture}{"\n"}{end}'`).
+> A locally-run `docker build` on an amd64 dev box produces an `amd64` image by default, which will
+> pull and start on an ARM node but crash-loop immediately with `exec format error` in the pod logs
+> (looks like a healthy rollout — `1/1` "Running" briefly — right up until `CrashLoopBackOff`).
+>
+> **Don't build locally — build on the cluster/registry side instead**, using `az acr build`
+> (an ACR Task: it builds in Azure, not on your machine, so there's no local Docker/QEMU emulation
+> needed) with an explicit `--platform linux/arm64`:
+>
+> ```powershell
+> # Run from the repo root. -f is the Dockerfile path, the trailing . is the build context.
+> az acr build --registry tileforgeacr --image wavestore-frontend:dev `
+>   -f src/wavestore_frontend/Dockerfile --platform linux/arm64 .
+> ```
+>
+> Repeat per-service, substituting the Dockerfile path and image name (see the `images:` remap in
+> `k8s/overlays/dev/kustomization.yaml` for the exact `tileforgeacr.azurecr.io/<name>:dev` tags each
+> Deployment expects). Omit `--platform` only if you've confirmed the target node pool is `amd64`.
+>
+> If `az acr build`'s streamed log output crashes with
+> `UnicodeEncodeError: 'charmap' codec can't encode characters ...` in a Windows PowerShell console,
+> that's a `colorama`/cp1252 console-encoding issue in the Azure CLI itself, not a build failure —
+> rerun with `--no-logs` and check the final JSON `"status": "Succeeded"` instead of relying on the
+> streamed output:
+> ```powershell
+> [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+> az acr build --registry tileforgeacr --image wavestore-frontend:dev `
+>   -f src/wavestore_frontend/Dockerfile --platform linux/arm64 . --no-logs
+> ```
+>
+> After a successful build, redeploy with a rollout restart (pulls the new image because
+> Deployments are already `imagePullPolicy: Always`):
+> ```powershell
+> kubectl -n wave-dev rollout restart deploy/wavestore-frontend
+> kubectl -n wave-dev rollout status deploy/wavestore-frontend --timeout=120s
+> ```
 
 Each service Dockerfile is included in this repo and should be built from the repo root with `-f`:
 
