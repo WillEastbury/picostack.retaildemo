@@ -606,6 +606,7 @@
           el("query").value = btn.textContent.trim();
           hideAutocomplete();
           state.activeOfferId = "";
+          state.navCategoryOverride = null;
           showSearchView();
           runSearch();
         });
@@ -1200,6 +1201,7 @@
         renderVisualSearchStatus(resp.visualSearch || {});
         el("query").value = description || (resp.visualSearch || {}).expandedQuery || "";
         state.activeOfferId = "";
+        state.navCategoryOverride = null;
         showSearchView();
         let items = (resp.results || []).map(r => r.product || r).filter(Boolean);
         renderResults(items, description || "photo search");
@@ -1378,8 +1380,8 @@
     }
 
     if (pageMode === "home") {
-      el("searchBtn").addEventListener("click", () => { hideAutocomplete(); state.activeOfferId = ""; showSearchView(); runSearch(); });
-      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { hideAutocomplete(); state.activeOfferId = ""; showSearchView(); runSearch(); } else if (e.key === "Escape") { hideAutocomplete(); } });
+      el("searchBtn").addEventListener("click", () => { hideAutocomplete(); state.activeOfferId = ""; state.navCategoryOverride = null; showSearchView(); runSearch(); });
+      el("query").addEventListener("keydown", e => { if (e.key === "Enter") { hideAutocomplete(); state.activeOfferId = ""; state.navCategoryOverride = null; showSearchView(); runSearch(); } else if (e.key === "Escape") { hideAutocomplete(); } });
       el("query").addEventListener("input", e => {
         clearTimeout(autocompleteDebounce);
         const value = e.target.value;
@@ -1412,6 +1414,7 @@
         if (voiceQuery) {
           el("query").value = voiceQuery;
           state.activeOfferId = "";
+          state.navCategoryOverride = null;
           showSearchView();
           runSearch();
         }
